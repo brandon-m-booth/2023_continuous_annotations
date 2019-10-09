@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib2tikz
+import numpy.matlib
 from multiprocessing import Pool
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, 'util')))
@@ -22,6 +23,51 @@ import util
 # For debugging
 show_final_plot = True
 show_debug_plots = False
+
+# Maximum the alignment of the segment sequences via temporal shift
+def TimeAlignSegmentSeqs(segment_seqs, sample_rate):
+   max_time_shift = int(math.ceil(3.0*sample_rate)) # 0-5 seconds
+   segment_seqs_mat = np.array(segment_seqs)
+   num_annotators = len(segment_seqs)
+   num_samples = len(segment_seqs[0])
+
+   print("Building matrix of all possible time shifts per annotator")
+   # Build matrix of all possible time shifts
+   shifts = np.zeros(((max_time_shift+1)**num_annotators,num_annotators))
+   for i in range(num_annotators):
+      rep_shift_mat = []
+      for shift_amount in range(max_time_shift+1):
+         rep_shift_mat.extend(((max_time_shift+1)**i)*[shift_amount])
+      num_repeats = shifts.shape[0]/len(rep_shift_mat)
+      shifts[:,-1-i] = np.matlib.repmat(rep_shift_mat, 1, num_repeats).T.reshape(-1,)
+
+   print("Examining agreement over all possible temporal shifts")
+   best_segment_seq_mat = None
+   best_shift = None
+   max_agreement = -np.inf
+   min_shift_sum = np.inf
+   for i in range(shifts.shape[0]):
+      if (i%100000) == 0:
+         print("%f%% complete"%(100*float(i)/shifts.shape[0]))
+      shift = shifts[i,:]
+      shifted_seqs_mat = np.zeros_like(segment_seqs_mat)
+      for annotator_idx in range(num_annotators):
+         annotator_shift = shift[annotator_idx]
+         shifted_segment_seq = segment_seqs[annotator_idx][annotator_shift:]
+         shifted_seqs_mat[annotator_idx,0:len(shifted_segment_seq)] = shifted_segment_seq
+      agreement = np.sum(np.abs(np.sum(shifted_seqs_mat, axis=0)))
+      if agreement >= max_agreement:
+         max_agreement = agreement
+         if np.sum(shift) < min_shift_sum:
+            best_segment_seq_mat = shifted_seqs_mat
+            best_shift = shift
+            min_shift_sum = np.sum(shift)
+      
+   col_names = []
+   for i in range(num_annotators):
+      col_names.append('s'+str(i))
+   aligned_segment_seq = pd.DataFrame(data=best_segment_seq_mat.T, index=segment_seqs[0].index, columns=col_names)
+   return aligned_segment_seq, best_shift
 
 def ComputeTrapezoidalFusion(input_csv_path, output_csv_path, target_hz=1.0, ground_truth_path=None, tikz_file=None):
    CONST_VAL = 1
@@ -90,12 +136,12 @@ def ComputeTrapezoidalFusion(input_csv_path, output_csv_path, target_hz=1.0, gro
          plt.show()
 
       tsr_segment_seqs.append(tsr_segment_seq)
+
+   tsr_segment_seqs_aligned, best_shift = TimeAlignSegmentSeqs(tsr_segment_seqs, target_hz)
+   print("Best temporal shift: "+str(best_shift))
    
    # Compute final segment sequence via majority voting
-   # TODO: time alignment
-   final_tsr_segment_seq = tsr_segment_seqs[0]
-   for i in range(1,len(tsr_segment_seqs)):
-      final_tsr_segment_seq += tsr_segment_seqs[i]
+   final_tsr_segment_seq = np.sum(tsr_segment_seqs_aligned, axis=1)
    final_tsr_segment_seq[final_tsr_segment_seq >= 0] = CONST_VAL
    final_tsr_segment_seq[final_tsr_segment_seq < 0] = CHANGE_VAL
 
