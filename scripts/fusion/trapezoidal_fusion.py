@@ -15,6 +15,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib2tikz
 import numpy.matlib
+import sklearn.metrics
 from multiprocessing import Pool
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, 'util')))
@@ -24,10 +25,33 @@ import util
 show_final_plot = True
 show_debug_plots = False
 
-# Maximum the alignment of the segment sequences via temporal shift
+MAX_SHIFT_SECONDS = 5
+CONST_VAL = 1
+CHANGE_VAL = -1
+CONST_THRESHOLD = 1e-4
+
+# Maximize the alignment of the segment sequence to feature time series using NMI
+def TimeOffetSegmentSequence(segment_seq, features_df):
+   time_index = segment_seq.index
+   trap_seg_features = ComputeTrapezoidalSegmentSequence(features_df, time_index)
+   best_shift = None
+   best_nmi_total = -np.inf
+   for shift in range(MAX_SHIFT_SECONDS+1):
+      shifted_seg_seq = segment_seq.iloc[shift:]
+      shifted_trap_seg_features = trap_seg_features.iloc[0:trap_seg_features.shape[0]-shift,:]
+      nmi_total = 0
+      for trap_seg_feat_idx in range(trap_seg_features.shape[1]):
+         nmi_total += sklearn.metrics.normalized_mutual_info_score(shifted_trap_seg_features.iloc[:,trap_seg_feat_idx], shifted_seg_seq)
+      if nmi_total > best_nmi_total:
+         best_nmi_total = nmi_total
+         best_shift = shift
+   shifted_seg_seq = segment_seq.iloc[best_shift:]
+   shifted_seg_seq.index = segment_seq.index[0:-best_shift]
+   return shifted_seg_seq, best_shift
+
+# Maximize the alignment of the segment sequences via temporal shift
 def TimeAlignSegmentSeqs(segment_seqs, sample_rate):
-   max_time_shift = int(math.ceil(3.0*sample_rate)) # 0-5 seconds
-   segment_seqs_mat = np.array(segment_seqs)
+   max_time_shift = int(math.ceil(float(MAX_SHIFT_SECONDS)*sample_rate)) # 0-5 seconds
    num_annotators = len(segment_seqs)
    num_samples = len(segment_seqs[0])
 
@@ -40,6 +64,9 @@ def TimeAlignSegmentSeqs(segment_seqs, sample_rate):
          rep_shift_mat.extend(((max_time_shift+1)**i)*[shift_amount])
       num_repeats = shifts.shape[0]/len(rep_shift_mat)
       shifts[:,-1-i] = np.matlib.repmat(rep_shift_mat, 1, num_repeats).T.reshape(-1,)
+   
+   # HACK - TaskA
+   shifts = np.zeros((1,num_annotators))
 
    print("Examining agreement over all possible temporal shifts")
    best_segment_seq_mat = None
@@ -50,11 +77,11 @@ def TimeAlignSegmentSeqs(segment_seqs, sample_rate):
       if (i%100000) == 0:
          print("%f%% complete"%(100*float(i)/shifts.shape[0]))
       shift = shifts[i,:]
-      shifted_seqs_mat = np.zeros_like(segment_seqs_mat)
+      shifted_seqs_mat = np.zeros((num_annotators, num_samples))
       for annotator_idx in range(num_annotators):
          annotator_shift = shift[annotator_idx]
          shifted_segment_seq = segment_seqs[annotator_idx][annotator_shift:]
-         shifted_seqs_mat[annotator_idx,0:len(shifted_segment_seq)] = shifted_segment_seq
+         shifted_seqs_mat[annotator_idx,0:len(shifted_segment_seq)] = shifted_segment_seq.values.reshape(-1,)
       agreement = np.sum(np.abs(np.sum(shifted_seqs_mat, axis=0)))
       if agreement >= max_agreement:
          max_agreement = agreement
@@ -69,94 +96,95 @@ def TimeAlignSegmentSeqs(segment_seqs, sample_rate):
    aligned_segment_seq = pd.DataFrame(data=best_segment_seq_mat.T, index=segment_seqs[0].index, columns=col_names)
    return aligned_segment_seq, best_shift
 
+# Get the trapezoidal segment sequence of each annotation
+def ComputeTrapezoidalSegmentSequence(signal_df, time_index):
+   trap_segment_seq = pd.DataFrame(data=CHANGE_VAL*np.ones(len(time_index)), index=time_index)
+   cur_time_index = 0
+   next_time_index = 1
+   for i in range(signal_df.shape[1]):
+      signal = signal_df.iloc[:,i]
+      while next_time_index < signal_df.shape[0]:
+         if abs(signal.iloc[next_time_index]-signal.iloc[cur_time_index]) < CONST_THRESHOLD:
+            while abs(signal.iloc[next_time_index]-signal.iloc[next_time_index-1]) < CONST_THRESHOLD:
+               next_time_index += 1
+               if next_time_index == signal_df.shape[0]:
+                  break
+            mask1 = trap_segment_seq.index >= signal.index[cur_time_index]
+            mask2 = trap_segment_seq.index <= signal.index[next_time_index-1]
+            trap_segment_seq.iloc[mask1 & mask2,i] = CONST_VAL
+         else:
+            while abs(signal.iloc[next_time_index]-signal.iloc[next_time_index-1]) >= CONST_THRESHOLD:
+               next_time_index += 1
+               if next_time_index == signal_df.shape[0]:
+                  break
+            mask1 = trap_segment_seq.index > signal.index[cur_time_index]
+            mask2 = trap_segment_seq.index < signal.index[next_time_index-1]
+            trap_segment_seq.iloc[mask1 & mask2,i] = CHANGE_VAL
+         cur_time_index = next_time_index - 1
+         next_time_index = cur_time_index + 1
+
+   return trap_segment_seq
+
 def ComputeTrapezoidalFusion(input_csv_path, output_csv_path, target_hz=1.0, ground_truth_path=None, tikz_file=None):
-   CONST_VAL = 1
-   CHANGE_VAL = -1
-   const_threshold = 1e-4
-
    # Get the largest time index in any file
-   tsr_files = glob.glob(os.path.join(input_csv_path, '*.csv'))
+   trap_seg_files = glob.glob(os.path.join(input_csv_path, '*.csv'))
    max_time = 0.0
-   for tsr_file in tsr_files:
-      signal_df = pd.read_csv(tsr_file)
-      time = signal_df.iloc[:,0]
-      max_time = max(max_time, time.iloc[-1])
+   for trap_seg_file in trap_seg_files:
+      signal_df = pd.read_csv(trap_seg_file)
+      max_time = max(max_time, signal_df.iloc[-1,0])
 
-   # Get the TSR segment sequence of each annotation
-   tsr_segment_seqs = []
+   # Get the trapezoidal segment sequence of each annotation
+   trap_segment_seqs = []
    time_index = np.arange(0,max_time,1.0/target_hz)
-   tsr_template = pd.Series(data=len(time_index)*[np.nan], index=time_index)
-   for tsr_file in tsr_files:
-      signal_df = pd.read_csv(tsr_file)
-      time = signal_df.iloc[:,0]
-      signal = signal_df.iloc[:,1]
-      signal.index = time
+   for trap_seg_file in trap_seg_files:
+      signal_df = pd.read_csv(trap_seg_file)
+      signal_df = signal_df.set_index(signal_df.columns[0])
 
       # Quantize the signal to remove meaningless tiny differences between values
       #quantized_signal= [decimal.Decimal(x).quantize(decimal.Decimal('0.00001'), rounding=decimal.ROUND_HALF_UP) for x in signal]
       #signal = pd.Series(np.array(quantized_signal).astype(float), index=signal.index)
 
-      # Compute the TSR segment sequence
-      tsr_segment_seq = copy.deepcopy(tsr_template)
-      tsr_segment_seq.iloc[:] = CHANGE_VAL
-      cur_time_index = 0
-      next_time_index = 1
-      while next_time_index < len(time):
-         if abs(signal.iloc[next_time_index]-signal.iloc[cur_time_index]) < const_threshold:
-            while abs(signal.iloc[next_time_index]-signal.iloc[next_time_index-1]) < const_threshold:
-               next_time_index += 1
-               if next_time_index == len(time):
-                  break
-            mask1 = tsr_segment_seq.index >= signal.index[cur_time_index]
-            mask2 = tsr_segment_seq.index <= signal.index[next_time_index-1]
-            tsr_segment_seq.iloc[mask1 & mask2] = CONST_VAL
-         else:
-            while abs(signal.iloc[next_time_index]-signal.iloc[next_time_index-1]) >= const_threshold:
-               next_time_index += 1
-               if next_time_index == len(time):
-                  break
-            mask1 = tsr_segment_seq.index > signal.index[cur_time_index]
-            mask2 = tsr_segment_seq.index < signal.index[next_time_index-1]
-            tsr_segment_seq.iloc[mask1 & mask2] = CHANGE_VAL
-         cur_time_index = next_time_index - 1
-         next_time_index = cur_time_index + 1
+      trap_segment_seq = ComputeTrapezoidalSegmentSequence(signal_df, time_index)
 
       if show_debug_plots:
          half_sample_interval = 0.5/target_hz
          fig, ax = plt.subplots()
-         ax.plot(time, signal, 'b-')
-         plt.title("Segmented TSR: %s"%(os.path.basename(tsr_file)))
-         const_type_mask = tsr_segment_seq == CONST_VAL
-         const_times = tsr_segment_seq.index[const_type_mask]
-         change_times = tsr_segment_seq.index[~const_type_mask]
+         ax.plot(signal_df.index, signal_df.values, 'b-')
+         plt.title("Segmented TSR: %s"%(os.path.basename(trap_seg_file)))
+         const_type_mask = trap_segment_seq == CONST_VAL
+         const_times = trap_segment_seq.index[const_type_mask]
+         change_times = trap_segment_seq.index[~const_type_mask]
          for const_time in const_times:
             ax.axvspan(const_time-half_sample_interval, const_time+half_sample_interval, alpha=0.2, color='red')
          for change_time in change_times:
             ax.axvspan(change_time-half_sample_interval, change_time+half_sample_interval, alpha=0.2, color='green')
          plt.show()
 
-      tsr_segment_seqs.append(tsr_segment_seq)
+      trap_segment_seqs.append(trap_segment_seq)
 
-   tsr_segment_seqs_aligned, best_shift = TimeAlignSegmentSeqs(tsr_segment_seqs, target_hz)
-   print("Best temporal shift: "+str(best_shift))
+   # Align the trapezoidal segment seguences to each other
+   trap_segment_seqs_aligned, best_annotator_shifts = TimeAlignSegmentSeqs(trap_segment_seqs, target_hz)
+   print("Best temporal shifts per annotator: "+str(best_annotator_shifts))
+
+   # Fuse the segment sequences via majority voting
+   fused_trap_segment_seq = np.sum(trap_segment_seqs_aligned, axis=1)
+   fused_trap_segment_seq[fused_trap_segment_seq >= 0] = CONST_VAL
+   fused_trap_segment_seq[fused_trap_segment_seq < 0] = CHANGE_VAL
+
+   # Offet the trapezoidal segment sequence in time to align with stimulus features
+   # TODO: Compute features.  Use the ground truth for now
+   gt_df = pd.read_csv(ground_truth_path)
+   fused_trap_seg_seq_aligned, best_time_offset = TimeOffetSegmentSequence(fused_trap_segment_seq, gt_df)
+   print("Best time alignment offset: "+str(best_time_offset))
    
-   # Compute final segment sequence via majority voting
-   final_tsr_segment_seq = np.sum(tsr_segment_seqs_aligned, axis=1)
-   final_tsr_segment_seq[final_tsr_segment_seq >= 0] = CONST_VAL
-   final_tsr_segment_seq[final_tsr_segment_seq < 0] = CHANGE_VAL
-
    # Plot
    half_sample_interval = 0.5/target_hz
    fig, ax = plt.subplots()
-   if ground_truth_path:
-      gt_df = pd.read_csv(ground_truth_path)
-      ax.plot(gt_df.iloc[:,0], gt_df.iloc[:,1], 'b-')
-   else:
-      ax.plot(time, signal, 'b-') # TODO: Plot the average?
-   plt.title("Final Segmented TSR")
-   const_type_mask = final_tsr_segment_seq == CONST_VAL
-   const_times = final_tsr_segment_seq.index[const_type_mask]
-   change_times = final_tsr_segment_seq.index[~const_type_mask]
+   ax.plot(gt_df.iloc[:,0], gt_df.iloc[:,1], 'b-')
+   plt.title("Fused Segmented Trapezoidal Sequence")
+   const_type_mask = fused_trap_seg_seq_aligned == CONST_VAL
+   const_times = fused_trap_seg_seq_aligned.index[const_type_mask]
+   change_times = fused_trap_seg_seq_aligned.index[~const_type_mask]
    for const_time in const_times:
       ax.axvspan(const_time-half_sample_interval, const_time+half_sample_interval, alpha=0.2, color='red')
    for change_time in change_times:
@@ -169,7 +197,7 @@ def ComputeTrapezoidalFusion(input_csv_path, output_csv_path, target_hz=1.0, gro
       matplotlib2tikz.save(tikz_file)
 
    # Save final TSR segment sequence
-   out_df = pd.DataFrame({'Time': final_tsr_segment_seq.index, 'Value': final_tsr_segment_seq})
+   out_df = pd.DataFrame({'Time': fused_trap_seg_seq_aligned.index, 'Value': fused_trap_seg_seq_aligned})
    out_df.to_csv(output_csv_path, header=True, index=False)
 
    return
@@ -180,7 +208,7 @@ if __name__ == '__main__':
    parser.add_argument('--input', dest='input_csv', required=True, help='Folder containing CSV-formatted TSR signals (first column: time, second: signal value)')
    parser.add_argument('--output', dest='output_csv', required=True, help='Output csv fused signal path')
    parser.add_argument('--target_hz', dest='target_hz', required=False, help='Frequency of the desired fusion')
-   parser.add_argument('--ground_truth', dest='ground_truth', required=False, help='CSV file containing the ground truth data')
+   parser.add_argument('--ground_truth', dest='ground_truth', required=True, help='CSV file containing the ground truth data')
    parser.add_argument('--tikz', dest='tikz', required=False, help='Output path for TikZ PGF plot code') 
    try:
       args = parser.parse_args()
@@ -191,9 +219,7 @@ if __name__ == '__main__':
    target_hz = 1.0
    if args.target_hz:
       target_hz = float(args.target_hz)
-   ground_truth_path = None
-   if args.ground_truth:
-      ground_truth_path = args.ground_truth
+   ground_truth_path = args.ground_truth
    tikz_file = args.tikz
    output_csv_path = args.output_csv
    ComputeTrapezoidalFusion(input_csv_path, output_csv_path, target_hz=target_hz, ground_truth_path=ground_truth_path, tikz_file=tikz_file)
