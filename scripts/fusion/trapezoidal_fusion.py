@@ -31,7 +31,7 @@ CHANGE_VAL = -1
 CONST_THRESHOLD = 1e-4
 
 # Maximize the alignment of the segment sequence to feature time series using NMI
-def TimeOffetSegmentSequence(segment_seq, features_df):
+def TimeOffsetSegmentSequence(segment_seq, features_df):
    time_index = segment_seq.index
    trap_seg_features = ComputeTrapezoidalSegmentSequence(features_df, time_index)
    best_shift = None
@@ -171,10 +171,10 @@ def ComputeTrapezoidalFusion(input_csv_path, output_csv_path, target_hz=1.0, gro
    fused_trap_segment_seq[fused_trap_segment_seq >= 0] = CONST_VAL
    fused_trap_segment_seq[fused_trap_segment_seq < 0] = CHANGE_VAL
 
-   # Offet the trapezoidal segment sequence in time to align with stimulus features
+   # Offset the trapezoidal segment sequence in time to align with stimulus features
    # TODO: Compute features.  Use the ground truth for now
    gt_df = pd.read_csv(ground_truth_path)
-   fused_trap_seg_seq_aligned, best_time_offset = TimeOffetSegmentSequence(fused_trap_segment_seq, gt_df)
+   fused_trap_seg_seq_aligned, best_time_offset = TimeOffsetSegmentSequence(fused_trap_segment_seq, gt_df)
    print("Best time alignment offset: "+str(best_time_offset))
    
    # Plot
