@@ -1,6 +1,6 @@
 function feature_sequences = get_features(task_name, frequency)
     [pathstr, filename, ext] = fileparts(mfilename('fullpath'));
-    features_file_exp = strcat(pathstr,'/../../datasets/green_intensity/',task_name,'/features_',num2str(frequency),'hz/*.csv');
+    features_file_exp = strcat(pathstr,'/../../../datasets/green_intensity/',task_name,'/features_',num2str(frequency),'hz/*.csv');
     [features_file_path,name,ext] = fileparts(features_file_exp);
     feature_sequence_mat = [];
     features_files = dir(features_file_exp);

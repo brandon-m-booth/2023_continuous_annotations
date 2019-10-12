@@ -1,4 +1,4 @@
-function estimate_lags(task_name, frequency, output_folder)
+function ground_truth = estimate_lags(task_name, frequency, output_folder)
     [annotations, label_sequences] = import_annotations(task_name, frequency);
     if isempty(annotations)
         return;
@@ -34,4 +34,6 @@ function estimate_lags(task_name, frequency, output_folder)
         out_mat = [times; mariooryad_shifted_labels(ann_idx,:)]';
         write_csv_file(output_file_path, out_mat, header);
     end
+
+    ground_truth = [times; mean(mariooryad_shifted_labels,1)]';
 end

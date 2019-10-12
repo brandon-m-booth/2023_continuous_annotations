@@ -97,7 +97,7 @@ def DoConstructSignal(seg_seq_csv, intervals_csv, interval_values_glob, output_f
       else:
          outfile = output_file
 
-      constructed_signal.to_csv(outfile)
+      constructed_signal.to_csv(outfile, index=False, header=True)
 
 if __name__=='__main__':
    parser = argparse.ArgumentParser()

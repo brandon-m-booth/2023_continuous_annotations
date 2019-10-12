@@ -26,8 +26,9 @@ show_final_plot = True
 show_debug_plots = False
 
 MAX_SHIFT_SECONDS = 5
-CONST_VAL = 1
-CHANGE_VAL = -1
+CONST_VAL = 0
+UP_CHANGE_VAL = 1
+DOWN_CHANGE_VAL = -1
 CONST_THRESHOLD = 1e-4
 
 # Maximize the alignment of the segment sequence to feature time series using NMI
@@ -98,7 +99,7 @@ def TimeAlignSegmentSeqs(segment_seqs, sample_rate, max_shift_seconds):
 
 # Get the trapezoidal segment sequence of each annotation
 def ComputeTrapezoidalSegmentSequence(signal_df, time_index):
-   trap_segment_seq = pd.DataFrame(data=CHANGE_VAL*np.ones(len(time_index)), index=time_index)
+   trap_segment_seq = pd.DataFrame(data=np.nan*np.ones(len(time_index)), index=time_index)
    cur_time_index = 0
    next_time_index = 1
    for i in range(signal_df.shape[1]):
@@ -112,14 +113,27 @@ def ComputeTrapezoidalSegmentSequence(signal_df, time_index):
             mask1 = trap_segment_seq.index >= signal.index[cur_time_index]
             mask2 = trap_segment_seq.index <= signal.index[next_time_index-1]
             trap_segment_seq.iloc[mask1 & mask2,i] = CONST_VAL
-         else:
-            while abs(signal.iloc[next_time_index]-signal.iloc[next_time_index-1]) >= CONST_THRESHOLD:
+         else if (signal.iloc[next_time_index]-signal.iloc[next_time_index-1]) >= CONST_THRESHOLD:
+:
+            while (signal.iloc[next_time_index]-signal.iloc[next_time_index-1]) >= CONST_THRESHOLD:
                next_time_index += 1
                if next_time_index == signal_df.shape[0]:
                   break
             mask1 = trap_segment_seq.index > signal.index[cur_time_index]
             mask2 = trap_segment_seq.index < signal.index[next_time_index-1]
-            trap_segment_seq.iloc[mask1 & mask2,i] = CHANGE_VAL
+            trap_segment_seq.iloc[mask1 & mask2,i] = UP_CHANGE_VAL
+         else if (signal.iloc[next_time_index]-signal.iloc[next_time_index-1]) <= CONST_THRESHOLD:
+:
+            while (signal.iloc[next_time_index]-signal.iloc[next_time_index-1]) <= CONST_THRESHOLD:
+               next_time_index += 1
+               if next_time_index == signal_df.shape[0]:
+                  break
+            mask1 = trap_segment_seq.index > signal.index[cur_time_index]
+            mask2 = trap_segment_seq.index < signal.index[next_time_index-1]
+            trap_segment_seq.iloc[mask1 & mask2,i] = DOWN_CHANGE_VAL
+         else:
+            print("ERROR: This case should never happen. Fix me!")
+            pdb.set_trace()
          cur_time_index = next_time_index - 1
          next_time_index = cur_time_index + 1
 
@@ -173,9 +187,16 @@ def ComputeTrapezoidalFusion(input_csv_path, output_path, target_hz=1.0, do_time
       trap_segment_seqs_aligned, best_annotator_shifts = TimeAlignSegmentSeqs(trap_segment_seqs, target_hz, 0)
 
    # Fuse the segment sequences via majority voting
-   fused_trap_segment_seq = np.sum(trap_segment_seqs_aligned, axis=1)
-   fused_trap_segment_seq[fused_trap_segment_seq >= 0] = CONST_VAL
-   fused_trap_segment_seq[fused_trap_segment_seq < 0] = CHANGE_VAL
+   for row_idx in range(trap_segment_seqs_aligned.shape[1]):
+      segment_vals, segment_counts = np.unique(trap_segment_seqs_aligned.iloc[row_idx,:], return_counts=True)
+      best_segment_count = max(segment_counts)
+      if np.sum([x == best_segment_count for x in segment_counts]) == 1:
+         best_segment_value = segment_vals[np.argmax(segment_counts)]
+      else: # Handle multiple best segment values by preferring constants
+         best_segment_counts_idx = [x == best_segment_count for x in segment_counts]
+         best_segment_values = np.array(segment_vals)[best_segment_counts_idx]
+         best_segment_value = CONST_VAL if CONST_VAL in best_segment_values else best_segment_values[0]
+      fused_trap_segment_seq[row_idx] = best_segment_value
 
    # Offset the trapezoidal segment sequence in time to align with stimulus features
    if do_time_alignment:

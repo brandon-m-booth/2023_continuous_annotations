@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import matplotlib2tikz
 from multiprocessing import Pool
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, 'util')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir, 'util')))
 import util
 
 # For debugging

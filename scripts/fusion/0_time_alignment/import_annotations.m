@@ -1,7 +1,7 @@
 function [annotations, label_sequences] = import_annotations(task_name, frequency)
     annotations = [];
     label_sequences = [];
-    annotation_files_exp = strcat('../../datasets/green_intensity/',task_name,'/annotations_',num2str(frequency),'hz/*.csv');
+    annotation_files_exp = strcat('../../../datasets/green_intensity/',task_name,'/annotations_',num2str(frequency),'hz/*.csv');
     subject_id_regexp = '.*ann(\d+)\.csv';
 
     % Read in annotation data for each subject, task, session, and label type
