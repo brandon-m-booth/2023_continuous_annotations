@@ -96,7 +96,6 @@ def FitLineSegmentWithIntersection(signal, i, j, a, b, x1, x2):
          x_point = (x1+x2)/2.0 # If the lines are parallel, use a valid x value
          new_a = 0.0 # This can only happen if the lines are constant, so force it to be so
          new_b = b
-         loss_value = np.inf # Don't allow line-fit to fit a constant line
       return new_a, new_b, x_point, loss_value
 
    x = np.array(signal.index[i:j+1])
@@ -143,8 +142,7 @@ def FitLineSegmentWithIntersection(signal, i, j, a, b, x1, x2):
       x = (x1+x2)/2.0 # If the lines are parallel, use a valid x value
       signal_fit[0] = 0.0 # This can only happen if the lines are constant, so force it to be so
       signal_fit[1] = b
-      #loss_value = np.mean(np.dot(y-b, y-b))
-      loss_value = np.inf # Don't allow line-fit to fit a constant line
+      loss_value = np.dot(y-b, y-b)
    else:
       x = (signal_fit[1]-b)/(a-signal_fit[0])
    return signal_fit[0], signal_fit[1], x, loss_value

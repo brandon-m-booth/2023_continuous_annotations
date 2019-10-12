@@ -50,8 +50,8 @@ def TimeOffsetSegmentSequence(segment_seq, features_df):
    return shifted_seg_seq, best_shift
 
 # Maximize the alignment of the segment sequences via temporal shift
-def TimeAlignSegmentSeqs(segment_seqs, sample_rate):
-   max_time_shift = int(math.ceil(float(MAX_SHIFT_SECONDS)*sample_rate)) # 0-5 seconds
+def TimeAlignSegmentSeqs(segment_seqs, sample_rate, max_shift_seconds):
+   max_time_shift = int(math.ceil(float(max_shift_seconds)*sample_rate))
    num_annotators = len(segment_seqs)
    num_samples = len(segment_seqs[0])
 
@@ -65,8 +65,8 @@ def TimeAlignSegmentSeqs(segment_seqs, sample_rate):
       num_repeats = shifts.shape[0]/len(rep_shift_mat)
       shifts[:,-1-i] = np.matlib.repmat(rep_shift_mat, 1, num_repeats).T.reshape(-1,)
    
-   # HACK - TaskA
-   shifts = np.zeros((1,num_annotators))
+   # HACK - TaskA green intensity experiment
+   #shifts = np.zeros((1,num_annotators))
 
    print("Examining agreement over all possible temporal shifts")
    best_segment_seq_mat = None
@@ -125,7 +125,10 @@ def ComputeTrapezoidalSegmentSequence(signal_df, time_index):
 
    return trap_segment_seq
 
-def ComputeTrapezoidalFusion(input_csv_path, output_csv_path, target_hz=1.0, ground_truth_path=None, tikz_file=None):
+def ComputeTrapezoidalFusion(input_csv_path, output_csv_path, target_hz=1.0, do_time_alignment=False, ground_truth_path=None, tikz_file=None):
+   # Load the ground truth
+   gt_df = pd.read_csv(ground_truth_path)
+
    # Get the largest time index in any file
    trap_seg_files = glob.glob(os.path.join(input_csv_path, '*.csv'))
    max_time = 0.0
@@ -163,8 +166,11 @@ def ComputeTrapezoidalFusion(input_csv_path, output_csv_path, target_hz=1.0, gro
       trap_segment_seqs.append(trap_segment_seq)
 
    # Align the trapezoidal segment seguences to each other
-   trap_segment_seqs_aligned, best_annotator_shifts = TimeAlignSegmentSeqs(trap_segment_seqs, target_hz)
-   print("Best temporal shifts per annotator: "+str(best_annotator_shifts))
+   if do_time_alignment:
+      trap_segment_seqs_aligned, best_annotator_shifts = TimeAlignSegmentSeqs(trap_segment_seqs, target_hz, MAX_SHIFT_SECONDS)
+      print("Best temporal shifts per annotator: "+str(best_annotator_shifts))
+   else:
+      trap_segment_seqs_aligned, best_annotator_shifts = TimeAlignSegmentSeqs(trap_segment_seqs, target_hz, 0)
 
    # Fuse the segment sequences via majority voting
    fused_trap_segment_seq = np.sum(trap_segment_seqs_aligned, axis=1)
@@ -172,10 +178,12 @@ def ComputeTrapezoidalFusion(input_csv_path, output_csv_path, target_hz=1.0, gro
    fused_trap_segment_seq[fused_trap_segment_seq < 0] = CHANGE_VAL
 
    # Offset the trapezoidal segment sequence in time to align with stimulus features
-   # TODO: Compute features.  Use the ground truth for now
-   gt_df = pd.read_csv(ground_truth_path)
-   fused_trap_seg_seq_aligned, best_time_offset = TimeOffsetSegmentSequence(fused_trap_segment_seq, gt_df)
-   print("Best time alignment offset: "+str(best_time_offset))
+   if do_time_alignment:
+      # TODO: compute features instead of using ground truth
+      fused_trap_seg_seq_aligned, best_time_offset = TimeOffsetSegmentSequence(fused_trap_segment_seq, gt_df)
+      print("Best time alignment offset: "+str(best_time_offset))
+   else:
+      fused_trap_seg_seq_aligned = fused_trap_segment_seq
    
    # Plot
    half_sample_interval = 0.5/target_hz
@@ -208,6 +216,7 @@ if __name__ == '__main__':
    parser.add_argument('--input', dest='input_csv', required=True, help='Folder containing CSV-formatted TSR signals (first column: time, second: signal value)')
    parser.add_argument('--output', dest='output_csv', required=True, help='Output csv fused signal path')
    parser.add_argument('--target_hz', dest='target_hz', required=False, help='Frequency of the desired fusion')
+   parser.add_argument('--do_time_alignment', dest='do_time_alignment', required=False, action="store_true", help='Flag indicating that trapezoidal segment sequence time alignment should be performed')
    parser.add_argument('--ground_truth', dest='ground_truth', required=True, help='CSV file containing the ground truth data')
    parser.add_argument('--tikz', dest='tikz', required=False, help='Output path for TikZ PGF plot code') 
    try:
@@ -219,7 +228,10 @@ if __name__ == '__main__':
    target_hz = 1.0
    if args.target_hz:
       target_hz = float(args.target_hz)
+   do_time_alignment = False
+   if args.do_time_alignment:
+      do_time_alignment = True
    ground_truth_path = args.ground_truth
    tikz_file = args.tikz
    output_csv_path = args.output_csv
-   ComputeTrapezoidalFusion(input_csv_path, output_csv_path, target_hz=target_hz, ground_truth_path=ground_truth_path, tikz_file=tikz_file)
+   ComputeTrapezoidalFusion(input_csv_path, output_csv_path, target_hz=target_hz, do_time_alignment=do_time_alignment, ground_truth_path=ground_truth_path, tikz_file=tikz_file)

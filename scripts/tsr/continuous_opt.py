@@ -44,12 +44,13 @@ def RecoverOptimumTSR(i, t, X, I, A, B, signal):
 
    return (x,y)
 
-def FitNextSegment(signal, n, i, j, t, A, B):
+def FitNextSegment(signal, n, i, j, t, A, B, started_const):
    """
    Helper function to fit the correct next line segment type for trapezoidal functions
    """
-   previous_segment_slope = A[i-1,t-2]
-   if previous_segment_slope == 0.0:
+   #previous_segment_slope = A[i-1,t-2]
+   #if previous_segment_slope == 0.0:
+   if (started_const and t%2 == 0) or (not started_const and t%2 == 1):
       (a, b, x, cost) = util.FitLineSegmentWithIntersection(signal, i, j-1, A[i-1,t-2], B[i-1,t-2], max(signal.index[0],signal.index[i-1]), min(signal.index[n-1],signal.index[i]))
    else:
       a = 0
@@ -107,9 +108,9 @@ def ComputeOptimalFit(input_csv_path, num_segments, max_jobs, output_csv_path, t
             (b, cost) = util.FitConstantSegment(signal.iloc[0:j])
          else:
             (a,b,cost) = util.FitLineSegment(signal.iloc[0:j])
-            if abs(a) < 1e-4:
-               a = 0.0
-               cost = np.inf # Don't allow fitted lines to be constant
+            #if abs(a) < 1e-4:
+            #   a = 0.0
+            #   cost = np.inf # Don't allow fitted lines to be constant
          A[j-1,0] = a
          B[j-1,0] = b
          X[j-1,0] = signal.index[0]
@@ -130,7 +131,7 @@ def ComputeOptimalFit(input_csv_path, num_segments, max_jobs, output_csv_path, t
                if k != 0 and A[k-1,i-1] != A[i-1,j-1]:
                   last_knots.append(i)
 
-            next_segment_args = [(signal, n, i, j, t, A, B) for i in last_knots]
+            next_segment_args = [(signal, n, i, j, t, A, B, start_with_constant_segment) for i in last_knots]
             if can_parallelize:
                results = pool.map(FitNextSegmentStar, next_segment_args)
             else:
@@ -148,7 +149,7 @@ def ComputeOptimalFit(input_csv_path, num_segments, max_jobs, output_csv_path, t
                I[j-1,t-1] = last_knots[min_idx]
                X[j-1,t-1] = xvals[min_idx]
 
-            if show_debug_plots:
+            if show_debug_plots and j >= 24 and t >= 5:
                for results_idx in range(len(results)):
                   a,b,x,cost = results[results_idx]
                   i = last_knots[results_idx]
@@ -157,13 +158,17 @@ def ComputeOptimalFit(input_csv_path, num_segments, max_jobs, output_csv_path, t
                      best_tsr_so_far_x, best_tsr_so_far_y = RecoverOptimumTSR(i, t-1, X, I, A, B, signal)
 
                      # Store the best line segment computed this iteration
-                     new_line_x = np.array(signal.index[i-1:j])
+                     new_line_x = np.array(signal.index[i-1:j]).astype(float)
                      new_line_y = a*new_line_x + b
 
                      # Find the intersection of the new line and the best TSR so far
                      c = (best_tsr_so_far_y[-2]-b-a*best_tsr_so_far_x[-2])/(a*(best_tsr_so_far_x[-1]-best_tsr_so_far_x[-2])-best_tsr_so_far_y[-1]+best_tsr_so_far_y[-2])
-                     x_int = best_tsr_so_far_x[-2] + c*(best_tsr_so_far_x[-1]-best_tsr_so_far_x[-2])
-                     y_int = best_tsr_so_far_y[-2] + c*(best_tsr_so_far_y[-1]-best_tsr_so_far_y[-2])
+                     if np.isnan(c):
+                        x_int = best_tsr_so_far_x[-1]
+                        y_int = best_tsr_so_far_y[-1]
+                     else:
+                        x_int = best_tsr_so_far_x[-2] + c*(best_tsr_so_far_x[-1]-best_tsr_so_far_x[-2])
+                        y_int = best_tsr_so_far_y[-2] + c*(best_tsr_so_far_y[-1]-best_tsr_so_far_y[-2])
 
                      # Fix up the TSR and new line points so they share the intersection
                      best_tsr_so_far_x[-1] = x_int
@@ -176,7 +181,7 @@ def ComputeOptimalFit(input_csv_path, num_segments, max_jobs, output_csv_path, t
                      plt.plot(signal.index[i:j], signal.iloc[i:j], 'bo')
                      plt.plot(new_line_x, new_line_y, 'g--')
                      plt.plot(best_tsr_so_far_x, best_tsr_so_far_y, 'r-')
-                     plt.title("T=%d, i=%d, j=%d, Cost of new line: %f"%(t, i, j, cost))
+                     plt.title("T=%d, i=%d, j=%d, Old cost: %f, New cost: %f"%(t, i, j, F[i-1, t-2], cost))
                      plt.show()
 
       # Recover optimum TSR
@@ -189,6 +194,7 @@ def ComputeOptimalFit(input_csv_path, num_segments, max_jobs, output_csv_path, t
       if cost <= best_cost:
          best_x = x
          best_y = y
+         best_cost = cost
 
    out_df = pd.DataFrame(data={'Time': best_x, 'Value': best_y})
    out_df.to_csv(output_csv_path, header=True, index=False)
@@ -202,7 +208,6 @@ def ComputeOptimalFit(input_csv_path, num_segments, max_jobs, output_csv_path, t
       matplotlib2tikz.save(tikz_file)
    if show_final_plot:
       plt.show()
-      
 
    return
 
