@@ -13,6 +13,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib2tikz
 from multiprocessing import Pool
+import cProfile, pstats, StringIO
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir, 'util')))
 import util
@@ -20,7 +21,8 @@ import util
 # For debugging
 show_final_plot = True
 show_debug_plots = False
-can_parallelize = False # TODO - Parallelism runs much slower. Investigate and fix me!
+can_parallelize = True
+enable_profiler = False
 
 # Recovers the optimum TSR of the signal up to index i (1 <= i <= n) for the given number of segments t (1 <= t <= num_segments)
 def RecoverOptimumTSR(i, t, X, I, A, B, signal):
@@ -80,7 +82,8 @@ def ComputeOptimalFit(input_csv_path, num_segments, max_jobs, output_csv_path, t
       num_segments = int(num_segments)
 
    print("Computing optimal segmented trapezoidal fit with %d segments..."%(num_segments))
-   pool = Pool(max_jobs)
+   if can_parallelize:
+      pool = Pool(max_jobs)
    
    best_x = None
    best_y = None
@@ -132,7 +135,7 @@ def ComputeOptimalFit(input_csv_path, num_segments, max_jobs, output_csv_path, t
                   last_knots.append(i)
 
             next_segment_args = [(signal, n, i, j, t, A, B, start_with_constant_segment) for i in last_knots]
-            if can_parallelize:
+            if can_parallelize and max_jobs > 1:
                results = pool.map(FitNextSegmentStar, next_segment_args)
             else:
                results = [FitNextSegmentStar(params) for params in next_segment_args]
@@ -231,4 +234,16 @@ if __name__ == '__main__':
    max_jobs = int(args.max_jobs) if args.max_jobs is not None else 1
    tikz_file = args.tikz
    output_csv_path = args.output_csv
+
+   if enable_profiler:
+      profile = cProfile.Profile()
+      profile.enable()
+
    ComputeOptimalFit(input_csv_path, num_segments, max_jobs, output_csv_path, tikz_file=tikz_file)
+
+   if enable_profiler:
+      profile.disable()
+      s = StringIO.StringIO()
+      ps = pstats.Stats(profile, stream=s).sort_stats('cumulative')
+      ps.print_stats()
+      print s.getvalue()
