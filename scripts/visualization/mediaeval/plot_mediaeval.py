@@ -27,7 +27,7 @@ def GetStatistic(df, stat_str):
 
 def PlotMediaeval():
    cur_file_path = os.path.dirname(os.path.realpath(__file__))
-   mediaeval_anno_path = os.path.join(cur_file_path, '..', '..', 'datasets', 'mediaeval', 'annotations', 'annotations per each rater', 'dynamic (per second annotations)')
+   mediaeval_anno_path = os.path.join(cur_file_path, '..', '..', '..', 'datasets', 'mediaeval', 'annotations', 'annotations per each rater', 'dynamic (per second annotations)')
    arousal_anno_path = os.path.join(mediaeval_anno_path, 'arousal')
    valence_anno_path = os.path.join(mediaeval_anno_path, 'valence')
 
