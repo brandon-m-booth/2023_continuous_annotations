@@ -105,37 +105,50 @@ def ComputeTrapezoidalSegmentSequence(signal_df, time_index):
    for i in range(signal_df.shape[1]):
       signal = signal_df.iloc[:,i]
       while next_time_index < signal_df.shape[0]:
+         segment_start_time = signal.index[cur_time_index]
          if abs(signal.iloc[next_time_index]-signal.iloc[cur_time_index]) < CONST_THRESHOLD:
             while abs(signal.iloc[next_time_index]-signal.iloc[next_time_index-1]) < CONST_THRESHOLD:
                next_time_index += 1
                if next_time_index == signal_df.shape[0]:
+                  segment_end_time = signal.index[-1] + 1
                   break
-            mask1 = trap_segment_seq.index >= signal.index[cur_time_index]
-            mask2 = trap_segment_seq.index <= signal.index[next_time_index-1]
+               segment_end_time = signal.index[next_time_index]
+            mask1 = trap_segment_seq.index >= segment_start_time
+            mask2 = trap_segment_seq.index < segment_end_time
             trap_segment_seq.iloc[mask1 & mask2,i] = CONST_VAL
-         else if (signal.iloc[next_time_index]-signal.iloc[next_time_index-1]) >= CONST_THRESHOLD:
-:
+         elif (signal.iloc[next_time_index]-signal.iloc[next_time_index-1]) >= CONST_THRESHOLD:
             while (signal.iloc[next_time_index]-signal.iloc[next_time_index-1]) >= CONST_THRESHOLD:
                next_time_index += 1
                if next_time_index == signal_df.shape[0]:
+                  segment_end_time = signal.index[-1] + 1
                   break
-            mask1 = trap_segment_seq.index > signal.index[cur_time_index]
-            mask2 = trap_segment_seq.index < signal.index[next_time_index-1]
+               segment_end_time = signal.index[next_time_index]
+            mask1 = trap_segment_seq.index >= segment_start_time
+            mask2 = trap_segment_seq.index < segment_end_time
             trap_segment_seq.iloc[mask1 & mask2,i] = UP_CHANGE_VAL
-         else if (signal.iloc[next_time_index]-signal.iloc[next_time_index-1]) <= CONST_THRESHOLD:
-:
-            while (signal.iloc[next_time_index]-signal.iloc[next_time_index-1]) <= CONST_THRESHOLD:
+         elif (signal.iloc[next_time_index]-signal.iloc[next_time_index-1]) <= -CONST_THRESHOLD:
+            while (signal.iloc[next_time_index]-signal.iloc[next_time_index-1]) <= -CONST_THRESHOLD:
                next_time_index += 1
                if next_time_index == signal_df.shape[0]:
+                  segment_end_time = signal.index[-1] + 1
                   break
-            mask1 = trap_segment_seq.index > signal.index[cur_time_index]
-            mask2 = trap_segment_seq.index < signal.index[next_time_index-1]
+               segment_end_time = signal.index[next_time_index]
+            mask1 = trap_segment_seq.index >= segment_start_time
+            mask2 = trap_segment_seq.index < segment_end_time
             trap_segment_seq.iloc[mask1 & mask2,i] = DOWN_CHANGE_VAL
          else:
             print("ERROR: This case should never happen. Fix me!")
             pdb.set_trace()
          cur_time_index = next_time_index - 1
          next_time_index = cur_time_index + 1
+
+      # Fill in trailing signal values with constant segments
+      mask = trap_segment_seq.index >= segment_end_time
+      trap_segment_seq.iloc[mask,i] = CONST_VAL
+
+   if np.any(np.isnan(trap_segment_seq)):
+      print("Error: Found NaN values in the trapezoidal segment sequence. This should not happen. Fix me!")
+      pdb.set_trace()
 
    return trap_segment_seq
 
@@ -187,7 +200,8 @@ def ComputeTrapezoidalFusion(input_csv_path, output_path, target_hz=1.0, do_time
       trap_segment_seqs_aligned, best_annotator_shifts = TimeAlignSegmentSeqs(trap_segment_seqs, target_hz, 0)
 
    # Fuse the segment sequences via majority voting
-   for row_idx in range(trap_segment_seqs_aligned.shape[1]):
+   fused_trap_segment_seq = np.array(trap_segment_seqs_aligned.shape[0]*[np.nan])
+   for row_idx in range(trap_segment_seqs_aligned.shape[0]):
       segment_vals, segment_counts = np.unique(trap_segment_seqs_aligned.iloc[row_idx,:], return_counts=True)
       best_segment_count = max(segment_counts)
       if np.sum([x == best_segment_count for x in segment_counts]) == 1:
@@ -204,7 +218,7 @@ def ComputeTrapezoidalFusion(input_csv_path, output_path, target_hz=1.0, do_time
       fused_trap_seg_seq_aligned, best_time_offset = TimeOffsetSegmentSequence(fused_trap_segment_seq, gt_df)
       print("Best time alignment offset: "+str(best_time_offset))
    else:
-      fused_trap_seg_seq_aligned = fused_trap_segment_seq
+      fused_trap_seg_seq_aligned = pd.Series(data=fused_trap_segment_seq, index=time_index)
    
    # Plot
    half_sample_interval = 0.5/target_hz
@@ -233,12 +247,11 @@ def ComputeTrapezoidalFusion(input_csv_path, output_path, target_hz=1.0, do_time
    constant_intervals = []
    start_idx = None
    for idx in range(len(fused_trap_seg_seq_aligned)):
-      if fused_trap_seg_seq_aligned[idx] == CONST_VAL:
+      if fused_trap_seg_seq_aligned.iloc[idx] == CONST_VAL:
          if start_idx is None:
             start_idx = idx
       else:
          if start_idx is not None:
-            #constant_intervals.append((fused_trap_seg_seq_aligned.index[start_idx], fused_trap_seg_seq_aligned.index[idx-1]))
             constant_intervals.append((start_idx, idx-1))
             start_idx = None
    out_df = pd.DataFrame(data=np.array(constant_intervals))

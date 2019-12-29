@@ -12,7 +12,7 @@ function ground_truth = estimate_lags(task_name, frequency, output_folder)
     min_length = inf;
     for label_seq_idx = 1:length(label_sequences)
         lag = mariooryad_lags.annotator_lags{label_seq_idx}(1);
-        shifted_labels{label_seq_idx} = label_sequences{label_seq_idx}(lag:end);
+        shifted_labels{label_seq_idx} = label_sequences{label_seq_idx}(lag+1:end);
         if length(shifted_labels{label_seq_idx}) < min_length
             min_length = length(shifted_labels{label_seq_idx});
         end
@@ -27,7 +27,7 @@ function ground_truth = estimate_lags(task_name, frequency, output_folder)
     
     %output_folder = '../../results/datasets/green_intensity/TaskA/annotations_1hz_aligned'
     header = {'Time_seconds', 'Data'};    
-    times = (1.0/frequency)*0:(size(mariooryad_shifted_labels,2)-1);
+    times = (1.0/frequency)*(0:(size(mariooryad_shifted_labels,2)-1));
     for ann_idx = 1:size(mariooryad_shifted_labels,1)
         output_file_name = strcat(task_name, '_ann', int2str(ann_idx), '.csv');
         output_file_path = strcat(output_folder, '/', output_file_name);
