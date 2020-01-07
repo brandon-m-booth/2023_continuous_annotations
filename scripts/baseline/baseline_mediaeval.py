@@ -26,6 +26,12 @@ def cmp_file_names(x, y):
    else:
       return 1
 
+def NormalizeAnnotations(df):
+   norm_df = df.copy()
+   for col_idx in range(df.shape[1]):
+      norm_df.iloc[:,col_idx] += df.mean(axis=0)[col_idx]
+   return norm_df - df.mean().mean()
+
 def MediaevalMLBaseline():
    cur_file_path = os.path.dirname(os.path.realpath(__file__))
    mediaeval_anno_path = os.path.join(cur_file_path, '..', '..', 'datasets', 'mediaeval', 'annotations', 'annotations per each rater', 'dynamic (per second annotations)')
@@ -80,6 +86,9 @@ def MediaevalMLBaseline():
          anno_df = anno_df.T
          anno_df.index = times_sec
          anno_df.columns = ['A%0d'%(i) for i in range(anno_df.shape[1])]
+
+         # Normalize annotations
+         anno_df = NormalizeAnnotations(anno_df)
 
          # Read and format the features data
          feature_df = pd.read_csv(features_dict[task_name], sep=';')
@@ -167,6 +176,7 @@ def MediaevalMLBaseline():
             pred_song = pred[cur_pred_idx:cur_pred_idx+len(labels_test)]
             rmse = math.sqrt(mean_squared_error(labels_test, pred_song))
             corr_pearson = pearsonr(labels_test, pred_song)[0]
+            task_dict[task_name]['name'] = task_name
             task_dict[task_name]['pred_rmse'] = rmse
             task_dict[task_name]['pred_pearson'] = corr_pearson
 
