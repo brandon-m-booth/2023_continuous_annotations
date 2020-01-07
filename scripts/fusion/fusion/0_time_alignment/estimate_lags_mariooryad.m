@@ -13,7 +13,7 @@ function [mariooryad_lags] = estimate_lags_mariooryad(annotations, feature_seque
         % BB - Also some of the labels do not extend to the end
         % of the features time series, so we repeat the last label so all
         % labels have the same max length
-        max_label_len = length(feature_sequences{1});
+        max_label_len = size(feature_sequences{1},1);
         for label_sequence_idx=1:length(label_sequences)
             len = length(label_sequences{label_sequence_idx});
             if len > max_label_len

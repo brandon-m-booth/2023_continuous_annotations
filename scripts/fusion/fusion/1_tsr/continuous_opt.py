@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #Author: Brandon M. Booth
 
+import io
 import os
 import sys
 import pdb
@@ -13,13 +14,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib2tikz
 from multiprocessing import Pool
-import cProfile, pstats, StringIO
+import cProfile, pstats
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir, 'util')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir, os.path.pardir, 'util')))
 import util
 
 # For debugging
-show_final_plot = True
+show_verbose_output = False
+show_final_plot = False
 show_debug_plots = False
 can_parallelize = True
 enable_profiler = False
@@ -59,32 +61,9 @@ def FitNextSegment(signal, n, i, j, t, A, B, started_const):
       (b, x, cost) = util.FitConstantSegmentWithIntersection(signal, i, j-1, A[i-1,t-2], B[i-1,t-2], max(signal.index[0],signal.index[i-1]), min(signal.index[n-1],signal.index[i]))
    return a, b, x, cost
 
-def FitNextSegmentStar(args):
-   return FitNextSegment(*args)
-
-# Dynamic program to find the optimal trapezoidal segmented regression
-def ComputeOptimalFit(input_csv_path, num_segments, max_jobs, output_csv_path, tikz_file=None):
-   # Get the signal data
-   signal_df = pd.read_csv(input_csv_path)
-   time = signal_df.iloc[:,0]
-   signal = signal_df.iloc[:,1]
-   signal.index = time
-
-   # Quantize the signal to remove meaningless tiny differences between values
-   quantized_signal= [decimal.Decimal(x).quantize(decimal.Decimal('0.00001'), rounding=decimal.ROUND_HALF_UP) for x in signal]
-   signal = pd.Series(np.array(quantized_signal).astype(float), index=signal.index)
-
-   if num_segments is None:
-      plt.plot(time, signal)
-      plt.title("How many segments should be used for TSR?")
-      plt.show()
-      num_segments = raw_input("Please enter the number of segments for TSR: ")
-      num_segments = int(num_segments)
-
-   print("Computing optimal segmented trapezoidal fit with %d segments..."%(num_segments))
-   if can_parallelize:
-      pool = Pool(max_jobs)
-   
+def ComputeOptimalTSRFixedSegments(num_segments, time, signal):
+   if show_verbose_output:
+      print("Computing optimal segmented trapezoidal fit with %d segments..."%(num_segments))
    best_x = None
    best_y = None
    best_cost = np.inf
@@ -97,7 +76,8 @@ def ComputeOptimalFit(input_csv_path, num_segments, max_jobs, output_csv_path, t
       X = np.nan*np.zeros((n, num_segments))
       # Iterate over all sorted points in order
       for j in range(1,n+1):
-         print("Computing optimal sub-segmentation for points up to index %d of %d"%(j, n))
+         if show_verbose_output:
+            print("Computing optimal sub-segmentation for points up to index %d of %d"%(j, n))
 
          # Initialize costs and set knot indices to an invalid index
          for t in range(j,num_segments+1):
@@ -124,7 +104,6 @@ def ComputeOptimalFit(input_csv_path, num_segments, max_jobs, output_csv_path, t
          for t in range(2,min(j,num_segments+1)):
             F[j-1,t-1] = np.inf
             I[j-1,t-1] = 0
-            X[j-1,0] = 0
 
             # For the target number of t segments, find the best break point reusing the optimum
             # fit for t-1 segments over all points up to some point before the current
@@ -134,11 +113,8 @@ def ComputeOptimalFit(input_csv_path, num_segments, max_jobs, output_csv_path, t
                if k != 0 and A[k-1,i-1] != A[i-1,j-1]:
                   last_knots.append(i)
 
-            next_segment_args = [(signal, n, i, j, t, A, B, start_with_constant_segment) for i in last_knots]
-            if can_parallelize and max_jobs > 1:
-               results = pool.map(FitNextSegmentStar, next_segment_args)
-            else:
-               results = [FitNextSegmentStar(params) for params in next_segment_args]
+            # Fit the next segment
+            results = [FitNextSegment(signal, n, i, j, t, A, B, start_with_constant_segment) for i in last_knots]
 
             # Update the cost, linear coefficients, and break points
             avals, bvals, xvals, costs = zip(*results)
@@ -152,7 +128,7 @@ def ComputeOptimalFit(input_csv_path, num_segments, max_jobs, output_csv_path, t
                I[j-1,t-1] = last_knots[min_idx]
                X[j-1,t-1] = xvals[min_idx]
 
-            if show_debug_plots and j >= 24 and t >= 5:
+            if show_debug_plots:
                for results_idx in range(len(results)):
                   a,b,x,cost = results[results_idx]
                   i = last_knots[results_idx]
@@ -165,7 +141,11 @@ def ComputeOptimalFit(input_csv_path, num_segments, max_jobs, output_csv_path, t
                      new_line_y = a*new_line_x + b
 
                      # Find the intersection of the new line and the best TSR so far
-                     c = (best_tsr_so_far_y[-2]-b-a*best_tsr_so_far_x[-2])/(a*(best_tsr_so_far_x[-1]-best_tsr_so_far_x[-2])-best_tsr_so_far_y[-1]+best_tsr_so_far_y[-2])
+                     try:
+                        c = (best_tsr_so_far_y[-2]-b-a*best_tsr_so_far_x[-2])/(a*(best_tsr_so_far_x[-1]-best_tsr_so_far_x[-2])-best_tsr_so_far_y[-1]+best_tsr_so_far_y[-2])
+                     except RuntimeWarning:
+                        pdb.set_trace()
+
                      if np.isnan(c):
                         x_int = best_tsr_so_far_x[-1]
                         y_int = best_tsr_so_far_y[-1]
@@ -191,34 +171,111 @@ def ComputeOptimalFit(input_csv_path, num_segments, max_jobs, output_csv_path, t
       x,y = RecoverOptimumTSR(n, num_segments, X, I, A, B, signal)
 
       start_segment_type = "constant-segment-first" if start_with_constant_segment else "linear-segment-first"
-      print("Final %s approximation loss value: %f"%(start_segment_type, F[n-1, num_segments-1]))
+      if show_verbose_output:
+         print("Final %s approximation loss value: %f"%(start_segment_type, F[n-1, num_segments-1]))
 
       cost = F[n-1, num_segments-1]
       if cost <= best_cost:
          best_x = x
          best_y = y
          best_cost = cost
+   return best_x, best_y, best_cost
 
+def ComputeOptimalTSRFixedSegmentsArgs(args):
+   return ComputeOptimalTSRFixedSegments(*args)
+
+# Dynamic program to find the optimal trapezoidal segmented regression
+def ComputeOptimalFit(input_csv_path, min_segments, max_segments, max_jobs, output_csv_path, opt_strategy="elbow", tikz_file=None):
+   if not os.path.isdir(os.path.dirname(output_csv_path)):
+      os.makedirs(os.path.dirname(output_csv_path))
+
+   # Get the signal data
+   signal_df = pd.read_csv(input_csv_path)
+   time = signal_df.iloc[:,0]
+   signal = signal_df.iloc[:,1]
+   signal.index = time
+
+   # Quantize the signal to remove meaningless tiny differences between values
+   quantized_signal= [decimal.Decimal(x).quantize(decimal.Decimal('0.00001'), rounding=decimal.ROUND_HALF_UP) for x in signal]
+   signal = pd.Series(np.array(quantized_signal).astype(float), index=signal.index)
+
+   tsr_args = [(num_segments, time, signal) for num_segments in range(min_segments, max_segments+1)]
+   if can_parallelize and max_jobs > 1:
+      pool = Pool(max_jobs)
+      results = pool.map(ComputeOptimalTSRFixedSegmentsArgs, tsr_args)
+      pool.terminate()
+   else:
+      results = [ComputeOptimalTSRFixedSegmentsArgs(params) for params in tsr_args]
+
+   best_xs, best_ys, best_costs = zip(*results)
+
+   # Plot the cost function for each segment
+   if show_final_plot or tikz_file is not None:
+      plt.ion()
+      plt.figure()
+
+   # Find the "best" result according to the optimization strategy
+   num_segments_tested = max_segments-min_segments+1
+   if opt_strategy == "minimum" or num_segments_tested < 3:
+      min_cost_idx = np.argmin(best_costs)
+   else: # Default: "elbow"
+      if not opt_strategy == "elbow":
+         print("Input optimization strategy %s not recognized. Defaulting to 'elbow'"%(opt_strategy))
+      # Find the elbow by fitting a 2-segment TSR to the cost curve
+      segments_series = pd.Series(list(range(min_segments, max_segments+1)))
+      costs_series = pd.Series(best_costs, index=list(range(min_segments, max_segments+1)))
+      elbow_x, elbow_y, elbow_cost = ComputeOptimalTSRFixedSegments(2, segments_series, costs_series)
+      if show_final_plot:
+         plt.plot(elbow_x, elbow_y, 'g--')
+      min_cost_idx = int(elbow_x[1])-min_segments # TODO - add sanity check for elbow-like cost function shape?
+   best_x = best_xs[min_cost_idx]
+   best_y = best_ys[min_cost_idx]
+   best_cost = best_costs[min_cost_idx]
+   best_num_segs = min_segments+min_cost_idx
+
+   # Plot the cost function for each segment
+   if show_final_plot:
+      plt.plot(range(min_segments, max_segments+1), best_costs, 'b-')
+      plt.plot(best_num_segs, best_costs[min_cost_idx], 'ro')
+      plt.title(os.path.basename(input_csv_path)+": Cost function for input range of segments")
+      plt.show()
+
+   # Plot results
+   num_plot_rows = int(math.ceil(math.sqrt(num_segments_tested)))
+   num_plot_cols = int(math.ceil(num_segments_tested/float(num_plot_rows)))
+   if show_final_plot or tikz_file is not None:
+      if num_segments_tested == 1:
+         plt.figure()
+         plt.plot(time, signal, 'bo')
+         plt.plot(best_xs[0], best_ys[0], 'r-')
+         plt.title(os.path.basename(input_csv_path)+": TSR for %d segments"%(min_segments))
+      else:
+         fig, ax = plt.subplots(num_plot_rows, num_plot_cols)
+         segment_idx = 0
+         for row_idx in range(num_plot_rows):
+            for col_idx in range(num_plot_cols):
+               if segment_idx >= num_segments_tested:
+                  continue
+               ax[row_idx, col_idx].plot(time, signal, 'bo')
+               ax[row_idx, col_idx].plot(best_xs[segment_idx], best_ys[segment_idx], 'r-')
+               ax[row_idx, col_idx].title.set_text(str(min_segments+segment_idx)+" segment(s)")
+               segment_idx += 1
+         plt.title(os.path.basename(input_csv_path)+": TSR for each number of segments")
+      if tikz_file is not None:
+         matplotlib2tikz.save(tikz_file)
+      plt.show()
+
+   # Save the "best" result according to the optimization strategy
    out_df = pd.DataFrame(data={'Time': best_x, 'Value': best_y})
    out_df.to_csv(output_csv_path, header=True, index=False)
 
-   # Plot results
-   plt.figure()
-   plt.plot(time, signal, 'bo')
-   plt.plot(best_x, best_y, 'r-')
-   plt.title(os.path.basename(input_csv_path)+": Best fit with MSE cost: %f"%(best_cost))
-   if tikz_file is not None:
-      matplotlib2tikz.save(tikz_file)
-   if show_final_plot:
-      plt.show()
-
-   return
-
+   return best_x, best_y, best_cost, best_num_segs
 
 if __name__ == '__main__':
    parser = argparse.ArgumentParser()
    parser.add_argument('--input', dest='input_csv', required=True, help='CSV-formatted input signal file with (first column: time, second: signal value)')
-   parser.add_argument('--segments', dest='num_segments', required=False, help='Number of segments to use in the approximation')
+   parser.add_argument('--segments', dest='num_segments', required=True, help='Number of segments to use in the approximation. Can be an integer or a range (e.g. 1-10)')
+   parser.add_argument('--opt_strategy', dest='opt_strategy', required=False, help='Strategy for determining which regression to save among the best fit TSRs for the input range of segments to test.  Allowed values are: "elbow" (default, use elbow minimization), "minimum" ( pick the TSR with the smallest loss value)')
    parser.add_argument('--maxjobs', dest='max_jobs', required=False, help='The maximum number of parallel jobs allowed.  For maximal efficiency, set this value to the number of processing cores available')
    parser.add_argument('--output', dest='output_csv', required=True, help='Output csv path')
    parser.add_argument('--tikz', dest='tikz', required=False, help='Output path for TikZ PGF plot code') 
@@ -230,7 +287,13 @@ if __name__ == '__main__':
    input_csv_path = args.input_csv
    num_segments = args.num_segments
    if num_segments:
-      num_segments = int(num_segments)
+      if '-' in num_segments:
+         min_segments = int(num_segments.split('-')[0])
+         max_segments = int(num_segments.split('-')[1])
+      else:
+         min_segments = int(num_segments)
+         max_segments = int(num_segments)
+   opt_strategy = args.opt_strategy if args.opt_strategy else None
    max_jobs = int(args.max_jobs) if args.max_jobs is not None else 1
    tikz_file = args.tikz
    output_csv_path = args.output_csv
@@ -239,11 +302,11 @@ if __name__ == '__main__':
       profile = cProfile.Profile()
       profile.enable()
 
-   ComputeOptimalFit(input_csv_path, num_segments, max_jobs, output_csv_path, tikz_file=tikz_file)
+   ComputeOptimalFit(input_csv_path, min_segments, max_segments, max_jobs, output_csv_path, opt_strategy=opt_strategy, tikz_file=tikz_file)
 
    if enable_profiler:
       profile.disable()
-      s = StringIO.StringIO()
+      s = io.StringIO()
       ps = pstats.Stats(profile, stream=s).sort_stats('cumulative')
       ps.print_stats()
-      print s.getvalue()
+      print(s.getvalue())
