@@ -40,11 +40,11 @@ def RecoverOptimumTSR(i, t, X, I, A, B, signal):
       knots = [i]
       x = [signal.index[i-1]]
       while t > 0:
+         x.append(X[knots[-1]-1,t-1])
          knot = I[knots[-1]-1,t-1]
          if knot == knots[-1] and len(knots) > 1:
             knot -= 1
          knots.append(knot)
-         x.append(X[knots[-1]-1,t-1])
          t -= 1
       knots.reverse()
       x.reverse()
@@ -140,6 +140,24 @@ def ComputeOptimalTSRFixedSegments(num_segments, time, signal):
             #   FitNextSegment(signal, n, 3, j, t, A, B, start_with_constant_segment)
             # Update the cost, linear coefficients, and break points
             avals, bvals, xvals, costs = zip(*results)
+
+            # BB TODO - Update the actual cost with the best estimate.  This does not fix anything
+            # DEBUG COST
+            if j == 5:
+               pdb.set_trace()
+            costs = [x for x in costs]
+            for results_idx in range(len(results)):
+               a,b,x,cost = results[results_idx]
+               if cost < 0:
+                  print("COST IS NEGATIVE")
+                  pdb.set_trace()
+
+               new_points_x = np.array(signal.index[last_knots[results_idx]-1:j])
+               new_points_y = a*new_points_x + b
+               new_sse = np.sum((new_points_y - signal.iloc[last_knots[results_idx]-1:j])**2)
+               costs[results_idx] = new_sse
+            # END DEBUG COST
+
             last_knots = np.array(last_knots)
             prev_sum_costs = F[last_knots-2,t-2]
             min_idx = np.argmin(prev_sum_costs+costs)
@@ -150,19 +168,22 @@ def ComputeOptimalTSRFixedSegments(num_segments, time, signal):
                I[j-1,t-1] = last_knots[min_idx]
                X[j-1,t-1] = xvals[min_idx]
 
+            # BB TODO - Compare the actual cost against the one stored in F.  This is not helped by the above debug code
+            # which sets F to the actual cost
             ###### DEBUGGING ######
-            #dx,dy = RecoverOptimumTSR(j, t, X, I, A, B, signal)
-            #ddf = pd.DataFrame(data=dy, index=dx, columns=['Data'])
-            #signal_df = pd.DataFrame(data=signal.iloc[0:j], index=signal.index[0:j], columns=['Data'])
-            #actual_cost = util.GetTSRSumSquareError(ddf, signal_df)
-            #dcost = F[j-1,t-1]
-            #if np.isnan(actual_cost) or abs(actual_cost - dcost)/actual_cost > 0.01:
-            #   print('Cost mismatch!')
-            #   print('T='+str(t)+', i='+str(i)+', j='+str(j))
-            #   pdb.set_trace()
-            #   dx,dy = RecoverOptimumTSR(j, t, X, I, A, B, signal)
-            #   actual_cost = util.GetTSRSumSquareError(ddf, signal_df)
-            #### END DEBUGGING ####
+            dx,dy = RecoverOptimumTSR(j, t, X, I, A, B, signal)
+            if not np.any(np.isnan(dx)):
+               ddf = pd.DataFrame(data=dy, index=dx, columns=['Data'])
+               signal_df = pd.DataFrame(data=signal.iloc[0:j], index=signal.index[0:j], columns=['Data'])
+               actual_cost = util.GetTSRSumSquareError(ddf, signal_df)
+               dcost = F[j-1,t-1]
+               if np.isnan(actual_cost) or abs(actual_cost - dcost)/actual_cost > 0.01:
+                  print('Cost mismatch!')
+                  print('T='+str(t)+', i='+str(i)+', j='+str(j))
+                  pdb.set_trace()
+                  dx,dy = RecoverOptimumTSR(j, t, X, I, A, B, signal)
+                  actual_cost = util.GetTSRSumSquareError(ddf, signal_df)
+            ### END DEBUGGING ####
 
             if show_debug_plots:
                for results_idx in range(len(results)):
