@@ -11,6 +11,24 @@ import pandas as pd
 
 CONST_THRESHOLD = 1e-4
 
+def ExtractConstIntervalsSignal(tsr_df):
+   # Save a list of constant interval segment pairs:
+   # (start time, end time)
+   constant_intervals = []
+   const_start_idx = None
+   for idx in range(tsr_df.shape[0]):
+      if const_start_idx is None:
+         const_start_idx = idx
+      else:
+         if abs(tsr_df.iloc[idx,0]-tsr_df.iloc[const_start_idx,0]) < CONST_THRESHOLD:
+            start_time = tsr_df.index[const_start_idx]
+            end_time = tsr_df.index[idx]
+            constant_intervals.append((start_time, end_time))
+            const_start_idx = None
+         else:
+            const_start_idx = idx
+   return constant_intervals
+
 def ExtractConstIntervals(input_csv_path, output_path):
    if not os.path.isdir(output_path):
       os.makedirs(output_path)
@@ -22,21 +40,7 @@ def ExtractConstIntervals(input_csv_path, output_path):
       tsr_df = pd.read_csv(tsr_file)
       tsr_df = tsr_df.set_index(tsr_df.columns[0])
 
-      # Save a list of constant interval segment pairs:
-      # (start time, end time)
-      constant_intervals = []
-      const_start_idx = None
-      for idx in range(tsr_df.shape[0]):
-         if const_start_idx is None:
-            const_start_idx = idx
-         else:
-            if abs(tsr_df.iloc[idx,0]-tsr_df.iloc[const_start_idx,0]) < CONST_THRESHOLD:
-               start_time = tsr_df.index[const_start_idx]
-               end_time = tsr_df.index[idx]
-               constant_intervals.append((start_time, end_time))
-               const_start_idx = None
-            else:
-               const_start_idx = idx
+      constant_intervals = ExtractConstIntervalsSignal(tsr_df)
 
       out_file_path = os.path.join(output_path, os.path.basename(tsr_file)[:-4]+'_const_intervals.csv')
       out_df = pd.DataFrame(data=np.array(constant_intervals), columns=['Start Time', 'End Time'])

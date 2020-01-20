@@ -1,7 +1,18 @@
 import cvxopt
 import numpy as np
+import pdb
 
-zero_slope_tol = 1e-3
+zero_slope_tol = 1e-7
+
+def GetTSRSumSquareError(tsr_df, signal_df):
+   signal_index = signal_df.index
+   tsr_series = tsr_df.iloc[:,0]
+   new_tsr_index = np.unique(tsr_series.index.tolist()+signal_index.tolist())
+   tsr_series = tsr_series.reindex(new_tsr_index, method=None, fill_value=np.nan)
+   tsr_series = tsr_series.interpolate(method='slinear')
+   diff = tsr_series[signal_index] - signal_df.iloc[:,0]
+   sse = diff.dot(diff).sum()
+   return sse
 
 def GetCVXOPTMatrix(M):
    if M is None:
@@ -62,6 +73,9 @@ def FitConstantSegmentWithIntersection(signal, i, j, a, b, x1, x2):
    G = GetCVXOPTMatrix(G)
    h = GetCVXOPTMatrix(h)
    cvxopt.solvers.options['maxiters'] = 300
+   cvxopt.solvers.options['abstol'] = 1e-12
+   cvxopt.solvers.options['reltol'] = 1e-12
+   cvxopt.solvers.options['feastol'] = 1e-12
    cvxopt.solvers.options['show_progress'] = False
    cvx_solution = cvxopt.solvers.coneqp(P=P, q=q, G=G, h=h, kktsolver='ldl')
    loss_value = np.nan
@@ -72,13 +86,18 @@ def FitConstantSegmentWithIntersection(signal, i, j, a, b, x1, x2):
       print("Warning: CVXOPT did not find an optimal solution")
 
    loss_value += 0.5*np.dot(y,y)
-   loss_value *= 2 # The QP minimizes 1/2 MSE, so double it here
+   loss_value *= 2 # The QP minimizes 1/2 SSE, so double it here
    if loss_value < 0.0: # Handle numerical precision issues
       loss_value = 0.0
    if a == 0.0:
       x = (x1+x2)/2.0
    else:
       x = (signal_fit[0]-b)/a
+
+   if x > x2 or x < x1:
+      print("x in [x1-x2] constraint not satisfied. Fix me!")
+      pdb.set_trace()
+
    return signal_fit[0], x, loss_value
 
 def FitLineSegmentWithIntersection(signal, i, j, a, b, x1, x2):
@@ -115,10 +134,13 @@ def FitLineSegmentWithIntersection(signal, i, j, a, b, x1, x2):
    G2 = GetCVXOPTMatrix(G2)
    h2 = GetCVXOPTMatrix(h2)
    cvxopt.solvers.options['maxiters'] = 300
+   cvxopt.solvers.options['abstol'] = 1e-12
+   cvxopt.solvers.options['reltol'] = 1e-12
+   cvxopt.solvers.options['feastol'] = 1e-12
    cvxopt.solvers.options['show_progress'] = False
    cvx_solution1 = cvxopt.solvers.coneqp(P=P, q=q, G=G1, h=h1, kktsolver='ldl')
    cvx_solution2 = cvxopt.solvers.coneqp(P=P, q=q, G=G2, h=h2, kktsolver='ldl')
-   loss_value1 = cvx_solution1['primal objective']
+   loss_value1 = cvx_solution1['primal objective'] 
    loss_value2 = cvx_solution2['primal objective']
    if 'optimal' in cvx_solution1['status']:
       if 'optimal' in cvx_solution2['status'] and loss_value2 < loss_value1:
@@ -135,7 +157,7 @@ def FitLineSegmentWithIntersection(signal, i, j, a, b, x1, x2):
       loss_value = None
 
    loss_value += 0.5*np.dot(y,y)
-   loss_value *= 2 # The QP minimizes 1/2 MSE, so double it here
+   loss_value *= 2 # The QP minimizes 1/2 SSE, so double it here
    if loss_value < 0.0: # Handle numerical precision issues
       loss_value = 0.0
    if a == 0.0 and abs(signal_fit[0]) < zero_slope_tol:
@@ -145,4 +167,9 @@ def FitLineSegmentWithIntersection(signal, i, j, a, b, x1, x2):
       loss_value = np.dot(y-b, y-b)
    else:
       x = (signal_fit[1]-b)/(a-signal_fit[0])
+
+   if x > x2 or x < x1:
+      print("x in [x1-x2] constraint not satisfied. Fix me!")
+      pdb.set_trace()
+
    return signal_fit[0], signal_fit[1], x, loss_value

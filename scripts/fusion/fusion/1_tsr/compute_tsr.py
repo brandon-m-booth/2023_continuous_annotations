@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #Author: Brandon M. Booth
 
 import io
@@ -22,30 +22,43 @@ import util
 
 # For debugging
 show_verbose_output = True
-show_final_plot = False
-show_debug_plots = False
+show_final_plot = True
+show_debug_plots = True
 can_parallelize = True
 enable_profiler = False
 
 # Recovers the optimum TSR of the signal up to index i (1 <= i <= n) for the given number of segments t (1 <= t <= num_segments)
 def RecoverOptimumTSR(i, t, X, I, A, B, signal):
-   # Find the knot x-axis locations and get the indices of the signal points with x values just before each knot
-   knots = [i]
-   x = [signal.index[i-1]]
-   while t > 0:
-      x.append(X[knots[-1]-1,t-1])
-      knots.append(I[knots[-1]-1,t-1])
-      t -= 1
-   knots.reverse()
-   x.reverse()
+   if i == 1:
+      x = [signal.index[0]]
+      y = [A[0,0]*signal.index[0] + B[0,0]]
+   elif t == 1:
+      x = signal.index[0:i].tolist()
+      y = [A[i-1,0]*z + B[i-1,0] for z in x]
+   else:
+      # Find the knot x-axis locations and get the indices of the signal points with x values just before each knot
+      knots = [i]
+      x = [signal.index[i-1]]
+      while t > 0:
+         knot = I[knots[-1]-1,t-1]
+         if knot == knots[-1] and len(knots) > 1:
+            knot -= 1
+         knots.append(knot)
+         x.append(X[knots[-1]-1,t-1])
+         t -= 1
+      knots.reverse()
+      x.reverse()
 
-   # Compute the y-axis value at each knot location
-   y = [A[knots[1]-1,0]*x[0] + B[knots[1]-1,0]]
-   t = 1
-   for i in range(1,len(knots)-1):
-      y.append(A[knots[i]-1,t-1]*x[i] + B[knots[i]-1,t-1])
-      t += 1
-   y.append(A[knots[-1]-1,t-1]*x[-1] + B[knots[-1]-1,t-1])
+      # Compute the y-axis value at each knot location
+      y = [A[knots[1]-2,0]*x[0] + B[knots[1]-2,0]]
+      t = 0
+      for i in range(1,len(knots)-1):
+         t += 1
+         y.append(A[knots[i]-2,t-1]*x[i] + B[knots[i]-2,t-1])
+      if knots[-2] == knots[-1]:
+         y.append(A[knots[-2]-1,t]*x[-1] + B[knots[-2]-1,t])
+      else:
+         y.append(A[knots[-1]-1,t]*x[-1] + B[knots[-1]-1,t])
 
    return (x,y)
 
@@ -56,10 +69,10 @@ def FitNextSegment(signal, n, i, j, t, A, B, started_const):
    #previous_segment_slope = A[i-1,t-2]
    #if previous_segment_slope == 0.0:
    if (started_const and t%2 == 0) or (not started_const and t%2 == 1):
-      (a, b, x, cost) = util.FitLineSegmentWithIntersection(signal, i, j-1, A[i-1,t-2], B[i-1,t-2], max(signal.index[0],signal.index[i-1]), min(signal.index[n-1],signal.index[i]))
+      (a, b, x, cost) = util.FitLineSegmentWithIntersection(signal, i-1, j-1, A[i-2,t-2], B[i-2,t-2], signal.index[max(0,i-2)], signal.index[min(i-1,n-1)])
    else:
       a = 0
-      (b, x, cost) = util.FitConstantSegmentWithIntersection(signal, i, j-1, A[i-1,t-2], B[i-1,t-2], max(signal.index[0],signal.index[i-1]), min(signal.index[n-1],signal.index[i]))
+      (b, x, cost) = util.FitConstantSegmentWithIntersection(signal, i-1, j-1, A[i-2,t-2], B[i-2,t-2], signal.index[max(0,i-2)], signal.index[min(i-1,n-1)])
    return a, b, x, cost
 
 # The num_segments argument can be a list or an integer. A dictionary is returned where the keys
@@ -73,7 +86,7 @@ def ComputeOptimalTSRFixedSegments(num_segments, time, signal):
       print("Computing optimal segmented trapezoidal fit with %s segments..."%(str(num_segments)))
    max_num_segments = max(num_segments)
    opt_tsr_dict = {}
-   for start_with_constant_segment in [True, False]:
+   for start_with_constant_segment in [True]:#[True, False]:
       n = len(time)
       F = np.nan*np.zeros((n, max_num_segments))
       I = np.zeros((n, max_num_segments)).astype(int)
@@ -114,7 +127,7 @@ def ComputeOptimalTSRFixedSegments(num_segments, time, signal):
             # For the target number of t segments, find the best break point reusing the optimum
             # fit for t-1 segments over all points up to some point before the current
             last_knots = []
-            for i in range(t,j):
+            for i in range(t,j): # BB TODO - Can I go with j+1?  I don't have enough points for i=j to work? No constraint on the slope...
                k = I[i-1,t-2]
                if k != 0 and A[k-1,i-1] != A[i-1,j-1]:
                   last_knots.append(i)
@@ -122,10 +135,13 @@ def ComputeOptimalTSRFixedSegments(num_segments, time, signal):
             # Fit the next segment
             results = [FitNextSegment(signal, n, i, j, t, A, B, start_with_constant_segment) for i in last_knots]
 
+            #if t == 3 and j == 4:
+            #   pdb.set_trace()
+            #   FitNextSegment(signal, n, 3, j, t, A, B, start_with_constant_segment)
             # Update the cost, linear coefficients, and break points
             avals, bvals, xvals, costs = zip(*results)
             last_knots = np.array(last_knots)
-            prev_sum_costs = F[last_knots-1,t-2]
+            prev_sum_costs = F[last_knots-2,t-2]
             min_idx = np.argmin(prev_sum_costs+costs)
             if F[j-1,t-1] >= (prev_sum_costs+costs)[min_idx]:
                F[j-1,t-1] = (prev_sum_costs+costs)[min_idx]
@@ -134,44 +150,80 @@ def ComputeOptimalTSRFixedSegments(num_segments, time, signal):
                I[j-1,t-1] = last_knots[min_idx]
                X[j-1,t-1] = xvals[min_idx]
 
+            ###### DEBUGGING ######
+            #dx,dy = RecoverOptimumTSR(j, t, X, I, A, B, signal)
+            #ddf = pd.DataFrame(data=dy, index=dx, columns=['Data'])
+            #signal_df = pd.DataFrame(data=signal.iloc[0:j], index=signal.index[0:j], columns=['Data'])
+            #actual_cost = util.GetTSRSumSquareError(ddf, signal_df)
+            #dcost = F[j-1,t-1]
+            #if np.isnan(actual_cost) or abs(actual_cost - dcost)/actual_cost > 0.01:
+            #   print('Cost mismatch!')
+            #   print('T='+str(t)+', i='+str(i)+', j='+str(j))
+            #   pdb.set_trace()
+            #   dx,dy = RecoverOptimumTSR(j, t, X, I, A, B, signal)
+            #   actual_cost = util.GetTSRSumSquareError(ddf, signal_df)
+            #### END DEBUGGING ####
+
             if show_debug_plots:
                for results_idx in range(len(results)):
                   a,b,x,cost = results[results_idx]
                   i = last_knots[results_idx]
                   if not np.isinf(cost):
                      # Get best TSR up to signal index i for t-1 segments
-                     best_tsr_so_far_x, best_tsr_so_far_y = RecoverOptimumTSR(i, t-1, X, I, A, B, signal)
+                     best_tsr_so_far_x, best_tsr_so_far_y = RecoverOptimumTSR(i-1, t-1, X, I, A, B, signal)
 
                      # Store the best line segment computed this iteration
                      new_line_x = np.array(signal.index[i-1:j]).astype(float)
                      new_line_y = a*new_line_x + b
 
                      # Find the intersection of the new line and the best TSR so far
-                     try:
-                        c = (best_tsr_so_far_y[-2]-b-a*best_tsr_so_far_x[-2])/(a*(best_tsr_so_far_x[-1]-best_tsr_so_far_x[-2])-best_tsr_so_far_y[-1]+best_tsr_so_far_y[-2])
-                     except RuntimeWarning:
-                        pdb.set_trace()
-
-                     if np.isnan(c):
-                        x_int = best_tsr_so_far_x[-1]
-                        y_int = best_tsr_so_far_y[-1]
+                     if len(best_tsr_so_far_x) < 2:
+                        best_tsr_so_far_x = 2*best_tsr_so_far_x
+                        best_tsr_so_far_y = 2*best_tsr_so_far_y
+                        # In this case, assume best_tsr_so_far_y is a constant function with duplicates in best_tsr_so_far_x
+                        if abs(a) == 0.0:
+                           x_int = signal.index[i-1]
+                           y_int = b
+                        else:
+                           x_int = (best_tsr_so_far_y[-1]-b)/a
+                           y_int = best_tsr_so_far_y[-1]
+                     #if np.isnan(c):
+                     #   x_int = best_tsr_so_far_x[-1]
+                     #   y_int = best_tsr_so_far_y[-1]
                      else:
+                        denom = a*(best_tsr_so_far_x[-1]-best_tsr_so_far_x[-2])-best_tsr_so_far_y[-1]+best_tsr_so_far_y[-2]
+                        c = (best_tsr_so_far_y[-2]-b-a*best_tsr_so_far_x[-2])/denom
                         x_int = best_tsr_so_far_x[-2] + c*(best_tsr_so_far_x[-1]-best_tsr_so_far_x[-2])
                         y_int = best_tsr_so_far_y[-2] + c*(best_tsr_so_far_y[-1]-best_tsr_so_far_y[-2])
+
 
                      # Fix up the TSR and new line points so they share the intersection
                      best_tsr_so_far_x[-1] = x_int
                      best_tsr_so_far_y[-1] = y_int
-                     new_line_x[0] = x_int
-                     new_line_y[0] = y_int
+                     if len(new_line_x) == 1:
+                        new_line_x = [new_line_x[0], new_line_x[0]]
+                        new_line_y = [new_line_y[0], new_line_y[0]]
+                        new_line_x[0] = x_int
+                        new_line_y[0] = y_int
+                     else:
+                        new_line_x[0] = x_int
+                        new_line_y[0] = y_int
 
                      plt.figure()
-                     plt.plot(signal.index[0:i], signal.iloc[0:i], 'mo')
-                     plt.plot(signal.index[i:j], signal.iloc[i:j], 'bo')
+                     plt.plot(signal.index[0:i-1], signal.iloc[0:i-1], 'mo')
+                     plt.plot(signal.index[i-1:j], signal.iloc[i-1:j], 'bo')
                      plt.plot(new_line_x, new_line_y, 'g--')
                      plt.plot(best_tsr_so_far_x, best_tsr_so_far_y, 'r-')
                      plt.title("T=%d, i=%d, j=%d, Old cost: %f, New cost: %f"%(t, i, j, F[i-1, t-2], cost))
                      plt.show()
+
+         # Handle under-constrained cases by back-filling results
+         #if j > 2:
+         #   F[j-2,j-2] = F[j-1,j-2]
+         #   A[j-2,j-2] = A[j-1,j-2]
+         #   B[j-2,j-2] = B[j-1,j-2]
+         #   I[j-2,j-2] = j-2 if I[j-1,j-2] > j-2 else I[j-1,j-2]
+         #   X[j-2,j-2] = X[j-1,j-2]
 
       # Recover optimum TSR
       for t in num_segments:
@@ -192,7 +244,7 @@ def ComputeOptimalTSRFixedSegmentsArgs(args):
    return ComputeOptimalTSRFixedSegments(*args)
 
 # Dynamic program to find the optimal trapezoidal segmented regression
-def ComputeOptimalTSR(input_csv_path, min_segments, max_segments, output_csv_path, opt_strategy="elbow", tikz_file=None):
+def ComputeOptimalTSR(input_csv_path, min_segments, max_segments, output_csv_path, opt_strategy=None, tikz_file=None):
    if not os.path.isdir(os.path.dirname(output_csv_path)):
       os.makedirs(os.path.dirname(output_csv_path))
 
@@ -224,9 +276,7 @@ def ComputeOptimalTSR(input_csv_path, min_segments, max_segments, output_csv_pat
    num_segments_tested = max_segments-min_segments+1
    if opt_strategy == "minimum" or num_segments_tested < 3:
       min_cost_idx = np.argmin(best_costs)
-   else: # Default: "elbow"
-      if not opt_strategy == "elbow":
-         print("Input optimization strategy %s not recognized. Defaulting to 'elbow'"%(opt_strategy))
+   elif opt_strategy == "elbow":
       # Find the elbow by fitting a 2-segment TSR to the cost curve
       segments_series = pd.Series(list(range(min_segments, max_segments+1)))
       costs_series = pd.Series(best_costs, index=list(range(min_segments, max_segments+1)))
@@ -234,15 +284,26 @@ def ComputeOptimalTSR(input_csv_path, min_segments, max_segments, output_csv_pat
       if show_final_plot:
          plt.plot(elbow_results[2]['x'], elbow_results[2]['y'], 'g--')
       min_cost_idx = int(elbow_results[2]['x'][1])-min_segments # TODO - add sanity check for elbow-like cost function shape?
-   best_x = best_xs[min_cost_idx]
-   best_y = best_ys[min_cost_idx]
-   best_cost = best_costs[min_cost_idx]
-   best_num_segs = min_segments+min_cost_idx
+   else:
+      if opt_strategy != '' or opt_strategy is not None:
+         print("Input optimization strategy '%s' not recognized. Defaulting to no optimization.  Separate output files will be written for every number of segments in the desired range."%(opt_strategy))
+      min_cost_idx = None
+   if min_cost_idx is not None:
+      best_x = best_xs[min_cost_idx]
+      best_y = best_ys[min_cost_idx]
+      best_cost = best_costs[min_cost_idx]
+      best_num_segs = min_segments+min_cost_idx
+   else:
+      best_x = best_xs[-1]
+      best_y = best_ys[-1]
+      best_cost = best_costs[-1]
+      best_num_segs = max_segments
 
    # Plot the cost function for each segment
    if show_final_plot:
       plt.plot(range(min_segments, max_segments+1), best_costs, 'b-')
-      plt.plot(best_num_segs, best_costs[min_cost_idx], 'ro')
+      if min_cost_idx is not None:
+         plt.plot(best_num_segs, best_costs[min_cost_idx], 'ro')
       plt.title(os.path.basename(input_csv_path)+": Cost function for input range of segments")
       plt.show()
 
@@ -257,6 +318,7 @@ def ComputeOptimalTSR(input_csv_path, min_segments, max_segments, output_csv_pat
          plt.title(os.path.basename(input_csv_path)+": TSR for %d segments"%(min_segments))
       else:
          fig, ax = plt.subplots(num_plot_rows, num_plot_cols)
+         plt.title(os.path.basename(input_csv_path)+": TSR for each number of segments")
          segment_idx = 0
          for row_idx in range(num_plot_rows):
             for col_idx in range(num_plot_cols):
@@ -266,14 +328,24 @@ def ComputeOptimalTSR(input_csv_path, min_segments, max_segments, output_csv_pat
                ax[row_idx, col_idx].plot(best_xs[segment_idx], best_ys[segment_idx], 'r-')
                ax[row_idx, col_idx].title.set_text(str(min_segments+segment_idx)+" segment(s)")
                segment_idx += 1
-         plt.title(os.path.basename(input_csv_path)+": TSR for each number of segments")
       if tikz_file is not None:
          matplotlib2tikz.save(tikz_file)
+      plt.ioff()
       plt.show()
 
    # Save the "best" result according to the optimization strategy
-   out_df = pd.DataFrame(data={'Time': best_x, 'Value': best_y})
-   out_df.to_csv(output_csv_path, header=True, index=False)
+   if min_cost_idx is not None:
+      out_df = pd.DataFrame(data={'Time': best_x, 'Value': best_y})
+      out_df.to_csv(output_csv_path, header=True, index=False)
+   else:
+      for i in range(max_segments-min_segments+1):
+         t = min_segments + i
+         x = best_xs[i]
+         y = best_ys[i]
+         output_file_name, output_file_ext = os.path.basename(output_csv_path).split('.')
+         output_file_path = os.path.join(os.path.dirname(output_csv_path), output_file_name+'_T%04d'%(t)+'.'+output_file_ext)
+         out_df = pd.DataFrame(data={'Time': x, 'Value': y})
+         out_df.to_csv(output_file_path, header=True, index=False)
 
    return best_x, best_y, best_cost, best_num_segs
 
@@ -281,7 +353,7 @@ if __name__ == '__main__':
    parser = argparse.ArgumentParser()
    parser.add_argument('--input', dest='input_csv', required=True, help='CSV-formatted input signal file with (first column: time, second: signal value)')
    parser.add_argument('--segments', dest='num_segments', required=True, help='Number of segments to use in the approximation. Can be an integer or a range (e.g. 1-10)')
-   parser.add_argument('--opt_strategy', dest='opt_strategy', required=False, help='Strategy for determining which regression to save among the best fit TSRs for the input range of segments to test.  Allowed values are: "elbow" (default, use elbow minimization), "minimum" ( pick the TSR with the smallest loss value)')
+   parser.add_argument('--opt_strategy', dest='opt_strategy', default=None, required=False, help='Strategy for determining which regression to save among the best fit TSRs for the input range of segments to test.  Allowed values are: "elbow" (uses elbow minimization), "minimum" ( pick the TSR with the smallest loss value). If this flag is not set, separate output will be written for each number of segments in the specified range.')
    parser.add_argument('--output', dest='output_csv', required=True, help='Output csv path')
    parser.add_argument('--tikz', dest='tikz', required=False, help='Output path for TikZ PGF plot code') 
    try:
@@ -298,7 +370,7 @@ if __name__ == '__main__':
       else:
          min_segments = int(num_segments)
          max_segments = int(num_segments)
-   opt_strategy = args.opt_strategy if args.opt_strategy else None
+   opt_strategy = args.opt_strategy
    tikz_file = args.tikz
    output_csv_path = args.output_csv
 
