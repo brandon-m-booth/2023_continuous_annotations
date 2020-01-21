@@ -39,6 +39,7 @@ def FitLineSegment(signal):
       M = np.vstack((signal.index, np.ones(len(signal)))).T
       coefs, residuals, rank, singular_vals = np.linalg.lstsq(M, signal.values, rcond=None)
       a,b = coefs
+      residuals = (a*signal.index + b)-signal.values
       if len(residuals) > 0:
          loss_value = np.dot(residuals, residuals)
       else:
@@ -94,9 +95,15 @@ def FitConstantSegmentWithIntersection(signal, i, j, a, b, x1, x2):
    else:
       x = (signal_fit[0]-b)/a
 
+   # Ensure boundaries are satisfied.  The solver isn't exact, but close.
    if x > x2 or x < x1:
-      print("x in [x1-x2] constraint not satisfied. Fix me!")
-      pdb.set_trace()
+      # Perturb 'b' to enforce boundary conditions
+      if abs(x-x1) < abs(x-x2):
+         signal_fit[1] = (a*x1 + b) - signal_fit[0]*x1
+         x = x1
+      else:
+         signal_fit[1] = (a*x2 + b) - signal_fit[0]*x2
+         x = x2
 
    return signal_fit[0], x, loss_value
 
@@ -105,9 +112,9 @@ def FitLineSegmentWithIntersection(signal, i, j, a, b, x1, x2):
       return np.nan, np.nan, np.nan, np.inf
 
    # Special case: if signal.iloc[i:j+1] has one point, then there is no unique optimal
-   # solution. Pick the line going through a*x1+b and signal.iloc[i].
+   # solution. Pick the line going through a*(x1+x2)/2+b and signal.iloc[i].
    if i == j:
-      x_point = x1
+      x_point = (x1+x2)/2.0
       new_a = (signal.iloc[i]-(a*x_point+b))/(signal.index[i]-x_point)
       new_b = signal.iloc[i] - new_a*signal.index[i]
       loss_value = 0.0
@@ -168,8 +175,14 @@ def FitLineSegmentWithIntersection(signal, i, j, a, b, x1, x2):
    else:
       x = (signal_fit[1]-b)/(a-signal_fit[0])
 
+   # Ensure boundaries are satisfied.  The solver isn't exact, but close.
    if x > x2 or x < x1:
-      print("x in [x1-x2] constraint not satisfied. Fix me!")
-      pdb.set_trace()
+      # Perturb 'b' to enforce boundary conditions
+      if abs(x-x1) < abs(x-x2):
+         signal_fit[1] = (a*x1 + b) - signal_fit[0]*x1
+         x = x1
+      else:
+         signal_fit[1] = (a*x2 + b) - signal_fit[0]*x2
+         x = x2
 
    return signal_fit[0], signal_fit[1], x, loss_value

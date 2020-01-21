@@ -23,7 +23,7 @@ import util
 # For debugging
 show_verbose_output = True
 show_final_plot = True
-show_debug_plots = True
+show_debug_plots = False
 can_parallelize = True
 enable_profiler = False
 
@@ -42,37 +42,43 @@ def RecoverOptimumTSR(i, t, X, I, A, B, signal):
       while t > 0:
          x.append(X[knots[-1]-1,t-1])
          knot = I[knots[-1]-1,t-1]
-         if knot == knots[-1] and len(knots) > 1:
-            knot -= 1
+         #if knot == knots[-1] and len(knots) > 1:
+         #   knot -= 1
          knots.append(knot)
          t -= 1
       knots.reverse()
       x.reverse()
 
       # Compute the y-axis value at each knot location
-      y = [A[knots[1]-2,0]*x[0] + B[knots[1]-2,0]]
+      y = [A[knots[1]-1,0]*x[0] + B[knots[1]-1,0]]
       t = 0
       for i in range(1,len(knots)-1):
          t += 1
-         y.append(A[knots[i]-2,t-1]*x[i] + B[knots[i]-2,t-1])
-      if knots[-2] == knots[-1]:
+         y.append(A[knots[i]-1,t-1]*x[i] + B[knots[i]-1,t-1])
+      if False:#knots[-2] == knots[-1]:
          y.append(A[knots[-2]-1,t]*x[-1] + B[knots[-2]-1,t])
       else:
          y.append(A[knots[-1]-1,t]*x[-1] + B[knots[-1]-1,t])
 
    return (x,y)
 
-def FitNextSegment(signal, n, i, j, t, A, B, started_const):
+def FitNextSegment(signal, n, i, j, t, A, B, X, started_const):
    """
    Helper function to fit the correct next line segment type for trapezoidal functions
    """
+   last_knot_x = X[i-1,t-2]
+   x1 = max(last_knot_x, signal.index[max(0,i-2)])
+   x2 = signal.index[min(i-1,n-1)]
    #previous_segment_slope = A[i-1,t-2]
    #if previous_segment_slope == 0.0:
    if (started_const and t%2 == 0) or (not started_const and t%2 == 1):
-      (a, b, x, cost) = util.FitLineSegmentWithIntersection(signal, i-1, j-1, A[i-2,t-2], B[i-2,t-2], signal.index[max(0,i-2)], signal.index[min(i-1,n-1)])
+      #mid_x = (x1+x2)/2.0
+      #x1 = mid_x
+      #x2 = mid_x
+      (a, b, x, cost) = util.FitLineSegmentWithIntersection(signal, i-1, j-1, A[i-1,t-2], B[i-1,t-2], x1, x2)
    else:
       a = 0
-      (b, x, cost) = util.FitConstantSegmentWithIntersection(signal, i-1, j-1, A[i-2,t-2], B[i-2,t-2], signal.index[max(0,i-2)], signal.index[min(i-1,n-1)])
+      (b, x, cost) = util.FitConstantSegmentWithIntersection(signal, i-1, j-1, A[i-1,t-2], B[i-1,t-2], x1, x2)
    return a, b, x, cost
 
 # The num_segments argument can be a list or an integer. A dictionary is returned where the keys
@@ -86,7 +92,7 @@ def ComputeOptimalTSRFixedSegments(num_segments, time, signal):
       print("Computing optimal segmented trapezoidal fit with %s segments..."%(str(num_segments)))
    max_num_segments = max(num_segments)
    opt_tsr_dict = {}
-   for start_with_constant_segment in [True]:#[True, False]:
+   for start_with_constant_segment in [True, False]:
       n = len(time)
       F = np.nan*np.zeros((n, max_num_segments))
       I = np.zeros((n, max_num_segments)).astype(int)
@@ -127,13 +133,13 @@ def ComputeOptimalTSRFixedSegments(num_segments, time, signal):
             # For the target number of t segments, find the best break point reusing the optimum
             # fit for t-1 segments over all points up to some point before the current
             last_knots = []
-            for i in range(t,j): # BB TODO - Can I go with j+1?  I don't have enough points for i=j to work? No constraint on the slope...
+            for i in range(t,j+1): # BB TODO - Can I go with j+1?  I don't have enough points for i=j to work? No constraint on the slope...
                k = I[i-1,t-2]
                if k != 0 and A[k-1,i-1] != A[i-1,j-1]:
                   last_knots.append(i)
 
             # Fit the next segment
-            results = [FitNextSegment(signal, n, i, j, t, A, B, start_with_constant_segment) for i in last_knots]
+            results = [FitNextSegment(signal, n, i, j, t, A, B, X, start_with_constant_segment) for i in last_knots]
 
             #if t == 3 and j == 4:
             #   pdb.set_trace()
@@ -143,8 +149,6 @@ def ComputeOptimalTSRFixedSegments(num_segments, time, signal):
 
             # BB TODO - Update the actual cost with the best estimate.  This does not fix anything
             # DEBUG COST
-            if j == 5:
-               pdb.set_trace()
             costs = [x for x in costs]
             for results_idx in range(len(results)):
                a,b,x,cost = results[results_idx]
@@ -159,7 +163,9 @@ def ComputeOptimalTSRFixedSegments(num_segments, time, signal):
             # END DEBUG COST
 
             last_knots = np.array(last_knots)
-            prev_sum_costs = F[last_knots-2,t-2]
+            prev_sum_costs = F[last_knots-1,t-2]
+            last_knot_cost_fixup = (A[last_knots-1,t-2]*signal.index[last_knots-1]+B[last_knots-1,t-2]-signal.iloc[last_knots-1])**2
+            prev_sum_costs = np.array(prev_sum_costs-last_knot_cost_fixup)
             min_idx = np.argmin(prev_sum_costs+costs)
             if F[j-1,t-1] >= (prev_sum_costs+costs)[min_idx]:
                F[j-1,t-1] = (prev_sum_costs+costs)[min_idx]
@@ -191,7 +197,7 @@ def ComputeOptimalTSRFixedSegments(num_segments, time, signal):
                   i = last_knots[results_idx]
                   if not np.isinf(cost):
                      # Get best TSR up to signal index i for t-1 segments
-                     best_tsr_so_far_x, best_tsr_so_far_y = RecoverOptimumTSR(i-1, t-1, X, I, A, B, signal)
+                     best_tsr_so_far_x, best_tsr_so_far_y = RecoverOptimumTSR(i, t-1, X, I, A, B, signal)
 
                      # Store the best line segment computed this iteration
                      new_line_x = np.array(signal.index[i-1:j]).astype(float)
@@ -232,7 +238,8 @@ def ComputeOptimalTSRFixedSegments(num_segments, time, signal):
 
                      plt.figure()
                      plt.plot(signal.index[0:i-1], signal.iloc[0:i-1], 'mo')
-                     plt.plot(signal.index[i-1:j], signal.iloc[i-1:j], 'bo')
+                     plt.plot(signal.index[i:j], signal.iloc[i:j], 'bo')
+                     plt.plot(signal.index[i-1:i], signal.iloc[i-1:i], 'ko')
                      plt.plot(new_line_x, new_line_y, 'g--')
                      plt.plot(best_tsr_so_far_x, best_tsr_so_far_y, 'r-')
                      plt.title("T=%d, i=%d, j=%d, Old cost: %f, New cost: %f"%(t, i, j, F[i-1, t-2], cost))
