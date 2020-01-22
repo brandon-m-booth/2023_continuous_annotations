@@ -8,7 +8,11 @@ def GetTSRSumSquareError(tsr_df, signal_df):
    signal_index = signal_df.index
    tsr_series = tsr_df.iloc[:,0]
    new_tsr_index = np.unique(tsr_series.index.tolist()+signal_index.tolist())
-   tsr_series = tsr_series.reindex(new_tsr_index, method=None, fill_value=np.nan)
+   try:
+      tsr_series = tsr_series.reindex(new_tsr_index, method=None, fill_value=np.nan)
+   except ValueError: # Can happen if the tsr_series has duplicate values in the index
+      tsr_series = tsr_series.groupby(tsr_series.index).first() # Remove duplicate index entries
+      tsr_series = tsr_series.reindex(new_tsr_index, method=None, fill_value=np.nan)
    tsr_series = tsr_series.interpolate(method='slinear')
    diff = tsr_series[signal_index] - signal_df.iloc[:,0]
    sse = diff.dot(diff).sum()
@@ -99,10 +103,10 @@ def FitConstantSegmentWithIntersection(signal, i, j, a, b, x1, x2):
    if x > x2 or x < x1:
       # Perturb 'b' to enforce boundary conditions
       if abs(x-x1) < abs(x-x2):
-         signal_fit[1] = (a*x1 + b) - signal_fit[0]*x1
+         signal_fit[0] = a*x1 + b
          x = x1
       else:
-         signal_fit[1] = (a*x2 + b) - signal_fit[0]*x2
+         signal_fit[0] = a*x2 + b
          x = x2
 
    return signal_fit[0], x, loss_value
