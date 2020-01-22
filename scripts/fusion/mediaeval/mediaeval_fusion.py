@@ -131,32 +131,36 @@ def ProcessMediaevalTask(cur_dimension, anno_files_path, target_subject_ids, fea
       max_segments = 40
       #opt_strategy = 'elbow'
       opt_strategy = None
-      best_x, best_y, best_cost, best_num_segs = tsr.ComputeOptimalTSR(average_signal_csv, min_segments, max_segments, out_file_path_1, opt_strategy=opt_strategy)
+      try:
+         best_x, best_y, best_cost, best_num_segs = tsr.ComputeOptimalTSR(average_signal_csv, min_segments, max_segments, out_file_path_1, opt_strategy=opt_strategy)
+      except:
+         print("ERROR: Could not compute TSR for file: %s"%(average_signal_csv))
+         continue
 
       # Step 1.1: Save the TSR information for each annotation
-      if opt_strategy is not None:
-         out_dir_1_1 = '1.1_tsr_info/'
-         out_file_1_1 = 'tsr_data.csv'
-         out_file_1_1_path = os.path.join(results_path, out_dir_1_1, out_file_1_1)
-         if not os.path.isdir(os.path.join(results_path, out_dir_1_1)):
-            os.makedirs(os.path.join(results_path, out_dir_1_1))
-         if step_1_1_df is None:
-            if os.path.exists(out_file_1_1_path):
-               step_1_1_df = pd.read_csv(out_file_1_1_path)
-            else:
-               step_1_1_df = pd.DataFrame(None, columns=['id', 'opt_num_segments', 'opt_cost'])
-         if int(subject_id) in step_1_1_df['id'].values:
-            row_mask = step_1_1_df['id'] == int(subject_id)
-            step_1_1_df.loc[row_mask, 'opt_num_segments'] = best_num_segs
-            step_1_1_df.loc[row_mask, 'opt_cost'] = best_cost
-         else:
-            append_idx = step_1_1_df.shape[0]
-            step_1_1_df.loc[append_idx] = [0,0,0]
-            step_1_1_df.loc[append_idx, 'id'] = int(subject_id)
-            step_1_1_df.loc[append_idx, 'opt_num_segments'] = best_num_segs
-            step_1_1_df.loc[append_idx, 'opt_cost'] = best_cost
-         step_1_1_df = step_1_1_df.sort_values(by=['opt_cost'], ascending=False)
-         step_1_1_df.to_csv(os.path.join(results_path, out_dir_1_1, out_file_1_1), header=True, index=False)
+      #if opt_strategy is not None:
+      #   out_dir_1_1 = '1.1_tsr_info/'
+      #   out_file_1_1 = 'tsr_data.csv'
+      #   out_file_1_1_path = os.path.join(results_path, out_dir_1_1, out_file_1_1)
+      #   if not os.path.isdir(os.path.join(results_path, out_dir_1_1)):
+      #      os.makedirs(os.path.join(results_path, out_dir_1_1))
+      #   if step_1_1_df is None:
+      #      if os.path.exists(out_file_1_1_path):
+      #         step_1_1_df = pd.read_csv(out_file_1_1_path)
+      #      else:
+      #         step_1_1_df = pd.DataFrame(None, columns=['id', 'opt_num_segments', 'opt_cost'])
+      #   if int(subject_id) in step_1_1_df['id'].values:
+      #      row_mask = step_1_1_df['id'] == int(subject_id)
+      #      step_1_1_df.loc[row_mask, 'opt_num_segments'] = best_num_segs
+      #      step_1_1_df.loc[row_mask, 'opt_cost'] = best_cost
+      #   else:
+      #      append_idx = step_1_1_df.shape[0]
+      #      step_1_1_df.loc[append_idx] = [0,0,0]
+      #      step_1_1_df.loc[append_idx, 'id'] = int(subject_id)
+      #      step_1_1_df.loc[append_idx, 'opt_num_segments'] = best_num_segs
+      #      step_1_1_df.loc[append_idx, 'opt_cost'] = best_cost
+      #   step_1_1_df = step_1_1_df.sort_values(by=['opt_cost'], ascending=False)
+      #   step_1_1_df.to_csv(os.path.join(results_path, out_dir_1_1, out_file_1_1), header=True, index=False)
 
       # TODO
       fused_signal = None
