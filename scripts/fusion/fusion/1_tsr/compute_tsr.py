@@ -183,7 +183,7 @@ def ComputeOptimalTSRFixedSegments(num_segments, time, signal):
                signal_df = pd.DataFrame(data=signal.iloc[0:j], index=signal.index[0:j], columns=['Data'])
                actual_cost = util.GetTSRSumSquareError(ddf, signal_df)
                dcost = F[j-1,t-1]
-               if np.isnan(actual_cost) or abs(actual_cost - dcost)/actual_cost > 0.01:
+               if np.isnan(actual_cost) or (abs(actual_cost - dcost)/actual_cost > 0.01 and not actual_cost < 1e-15):
                   print('Cost mismatch!')
                   print('T='+str(t)+', i='+str(i)+', j='+str(j))
                   pdb.set_trace()
