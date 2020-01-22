@@ -3,6 +3,7 @@
 
 import io
 import os
+import re
 import sys
 import pdb
 import glob
@@ -11,7 +12,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-show_overlay_plot = True
+show_overlay_plot = False
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir, os.path.pardir, 'util')))
 import util
@@ -26,6 +27,7 @@ def CheckTSRError(target_signals_path, tsr_approxs_path):
       task_ids.append(int(os.path.basename(target_signal_file).split('_')[0]))
    task_ids = sorted(task_ids)
 
+   has_error = False
    for task_id in task_ids:
       # Find the target signal file for this task ID
       signal_df = None
@@ -45,32 +47,52 @@ def CheckTSRError(target_signals_path, tsr_approxs_path):
          if tsr_task_id == task_id:
             tsr_files.append(tsr_approx_file)
 
+      if not tsr_files:
+         continue
+
       if show_overlay_plot:
          plt.figure()
          plt.plot(signal_df.index, signal_df.iloc[:,0], 'r-', label='Fused')
-      # Compute and store the reconstruction error (MSE)
-      t_vs_mse = []
+      # Compute and store the reconstruction error (SSE)
+      t_vs_sse = []
       for tsr_file in tsr_files:
          tsr_df = pd.read_csv(tsr_file)
-         num_segments = tsr_df.shape[0]-1
+         #num_segments = tsr_df.shape[0]-1
+         num_segs_regex = re.search(".+_T([0-9]+)\.csv", tsr_file)
+         num_segments = int(num_segs_regex.group(1))
          tsr_df = tsr_df.set_index('Time')
-         mse = util.GetTSRSumSquareError(tsr_df, signal_df)
-         t_vs_mse.append((num_segments, mse))
-         if show_overlay_plot and num_segments > 8 and num_segments < 13:
+         sse = util.GetTSRSumSquareError(tsr_df, signal_df)
+         t_vs_sse.append((num_segments, sse))
+         if show_overlay_plot and num_segments > 30:
             plt.plot(tsr_df.index, tsr_df.iloc[:,0], label=str(num_segments))
-      plt.title('TSR Overlay Plot')
-      plt.legend()
+      if show_overlay_plot:
+         plt.title('TSR Overlay Plot')
+         plt.legend()
 
-      t, mse = zip(*t_vs_mse)
+      t, sse = zip(*t_vs_sse)
       sort_idx = np.argsort(t)
       t = np.array(t)[sort_idx]
-      mse = np.array(mse)[sort_idx]
-      plt.figure()
-      plt.plot(t,mse,'r-')
-      plt.title('Task ID: %d'%(task_id))
-      plt.xlabel('T')
-      plt.ylabel('MSE')
-      plt.show()
+      sse = np.array(sse)[sort_idx]
+
+      # Check for SSE monotonicity
+      tol = 1e-10
+      if np.any(np.diff(sse)-tol > 0):
+         print("Task %d does not have a monotonic error function vs. num segments"%(task_id))
+         has_error = True
+
+      if show_overlay_plot:
+         plt.figure()
+         plt.plot(t,sse,'r-')
+         plt.title('Task ID: %d'%(task_id))
+         plt.xlabel('T')
+         plt.ylabel('SSE')
+         plt.show()
+
+   if has_error:
+      print("Error detected.  Check previous output")
+   else:
+      print("No TSR errors detected!")
+   return
 
 if __name__ == '__main__':
    parser = argparse.ArgumentParser()
