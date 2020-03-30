@@ -1,0 +1,3 @@
+dim_label,dim_definition,ref_audio_url,a_audio_url,b_audio_url,ref_start,ref_end,a_start,a_end,b_start,b_end
+arousal,Arousal is a measure of the level of calmness or excitement of a stimulus,https://signal-warping-real-data.s3.us-east-2.amazonaws.com/1000.mp3,https://signal-warping-real-data.s3.us-east-2.amazonaws.com/1001.mp3,https://signal-warping-real-data.s3.us-east-2.amazonaws.com/1002.mp3,15.0,45.0,15.0,45.0,15.0,45.0
+arousal,Arousal is a measure of the level of calmness or excitement of a stimulus,https://signal-warping-real-data.s3.us-east-2.amazonaws.com/1003.mp3,https://signal-warping-real-data.s3.us-east-2.amazonaws.com/1004.mp3,https://signal-warping-real-data.s3.us-east-2.amazonaws.com/1005.mp3,15.0,45.0,15.0,45.0,15.0,45.0

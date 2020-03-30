@@ -22,7 +22,7 @@ import util
 
 # For debugging
 show_verbose_output = True
-show_final_plot = True
+show_final_plot = False
 show_debug_plots = False
 can_parallelize = True
 enable_profiler = False
