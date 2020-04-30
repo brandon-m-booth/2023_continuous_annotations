@@ -12,7 +12,7 @@ import statprof
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib2tikz
+import tikzplotlib
 from multiprocessing import Pool
 from collections.abc import Iterable
 import cProfile, pstats

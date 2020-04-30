@@ -15,40 +15,6 @@ import agreement_metrics as agree
 
 valid_time_percentage = 0.20
 
-# Note: Rows are subjects/annotations, columns are observations
-def ICC3(data_mat):
-   [n, k] = data_mat.shape
-
-   # Calculate degrees of freedom
-   dfc = k - 1
-   dfe = (n - 1)*(k-1)
-   dfr = n - 1
-
-   mean_val = np.mean(data_mat)
-   sst = ((data_mat - mean_val)**2).sum()
-
-   sessions_mat = np.kron(np.eye(k), np.ones((n, 1)))
-   subjects_mat = np.tile(np.eye(n), (k, 1))
-   sess_subj_mat = np.hstack([sessions_mat, subjects_mat])
-
-   predicted_mat = np.dot(np.dot(np.dot(sess_subj_mat, np.linalg.pinv(np.dot(sess_subj_mat.T, sess_subj_mat))), sess_subj_mat.T), data_mat.flatten('F'))
-   # Calc SSE
-   residuals = data_mat.flatten('F') - predicted_mat
-   sse = (residuals ** 2).sum()
-   mse = sse/dfe
-
-   # Effect between cols
-   ssc = ((np.mean(data_mat, 0) - mean_val)**2).sum()*n
-   msc = ssc/(dfc*n)
-
-   # Effect between rows
-   ssr = sst - ssc - sse
-   msr = ssr/dfr
-
-   icc3 = (msr - mse)/(msr + (k-1)*mse)
-
-   return icc3
-
 def ClusterSimilarityMatrix(sim_mat, method='average'):
    n = len(sim_mat)
    flat_dist_mat = ssd.squareform(1.0-sim_mat)
@@ -78,7 +44,7 @@ def ComputePaganAgreement(input_file_path, do_show_plots=False):
          external_pids = []
 
          if do_show_plots:
-            fig, axs = plt.subplots(3,3, figsize=(11,9))
+            fig, axs = plt.subplots(4,4, figsize=(11,9))
 
          end_time = max(proj_df['VideoTime'])
          combined_anno_df = None
@@ -91,7 +57,7 @@ def ComputePaganAgreement(input_file_path, do_show_plots=False):
             anno_vals = pid_df.loc[:,'Value'].values
             anno_df = pd.DataFrame(data=anno_vals, index=anno_time, columns=[external_pid])
             if do_show_plots:
-               axs[2,2].plot(anno_time, anno_vals)
+               axs[3,3].plot(anno_time, anno_vals)
 
             if not max(anno_time) >= valid_time_percentage*end_time:
                print('Rejecting annotation '+external_pid+' because end time is: '+str(max(anno_time))+'/'+str(end_time))
@@ -106,12 +72,17 @@ def ComputePaganAgreement(input_file_path, do_show_plots=False):
          combined_anno_df = combined_anno_df.interpolate(method='linear', axis=0)
          combined_anno_df = combined_anno_df.groupby(level=0).mean()
 
+         ###############
          # Compute different pairwise agreement measures
+         ###############
          # Pearson
          pearson_corr_mat = agree.PearsonCorr(combined_anno_df)
 
          # Spearman
          spearman_corr_mat = agree.SpearmanCorr(combined_anno_df)
+
+         # Kendall's Tau
+         kendall_corr_mat = agree.KendallTauCorr(combined_anno_df)
 
          # Cohen's kappa 
          # BB - skipping this one; requires partitioning the continuous space into mutex bins
@@ -119,19 +90,27 @@ def ComputePaganAgreement(input_file_path, do_show_plots=False):
          # MSE
          mse_mat = agree.MeanSquaredErrorMat(combined_anno_df)
 
+         # CCC
+         ccc_mat = agree.ConcordanceCorrelationCoef(combined_anno_df)
+
+         # TSS, T>=N-1
+         norm_diff_df = util.NormedDiffRank(combined_anno_df)
+         norm_sum_delta_mat = agree.NormedSumDelta(norm_diff_df)
+
+         # TSS corrected, T>=N-1
+         # TODO - Should I correct using the same Cronbach's alpha idea?
+         norm_sum_delta_corrected_mat = agree.NormedSumDeltaCorrected(norm_diff_df, prob_value=1.0/3)
+
+         ###############
          # Compute summary agreement measures
+         ###############
          # Cronbach's alpha
          cronbachs_alpha = agree.CronbachsAlphaCorr(combined_anno_df)
 
-         # Kendall's Tau
-         kendall_corr_mat = agree.KendallTauCorr(combined_anno_df)
-
-         # ICC(1,1)
-         # TODO - runs out of memory.  Downsample, then try again?
-         icc = ICC3(combined_anno_df.values.T)
-
-         # CCC
-         ccc_mat = agree.ConcordanceCorrelationCoef(combined_anno_df)
+         # ICC(2,1)
+         icc_df = agree.ICC(combined_anno_df)
+         icc21_df = icc_df.loc[icc_df['type'] == 'ICC2',:]
+         icc21 = icc21_df['ICC'].iloc[0]
 
          # Krippendorff's alpha
          krippendorffs_alpha = agree.KrippendorffsAlpha(combined_anno_df)
@@ -140,12 +119,18 @@ def ComputePaganAgreement(input_file_path, do_show_plots=False):
          # BB - Doesn't make sense for scales where zero isn't the center
 
          # Accumulated Normed Rank-based Krippendorff's Alpha
-         accum_norm_rank_df = util.AccumNormedRank(combined_anno_df)
+         accum_norm_rank_df = util.AccumNormedDiffRank(combined_anno_df)
          krippendorffs_alpha_accum_norm_rank = agree.KrippendorffsAlpha(accum_norm_rank_df)
 
-         # TSS
+         # TSS for T < N-1 ?
          # TODO - Compute TSR separately and load then in?
          # TODO - Add a TSR->TSS transform, then add a normed zero-one similarity function
+
+         # Put global agreement measures into a dataframe
+         global_agreement_df = pd.DataFrame(data=[[cronbachs_alpha, icc21, krippendorffs_alpha, krippendorffs_alpha_accum_norm_rank]], columns=['Cronbach\'s Alpha', 'ICC(2)', 'Krippendorff\'s Alpha', 'Krippendorff\'s Alpha Normed Ranks'])
+
+         # Max-normalize the MSE and convert to a correlation-like matrix
+         mse_corr_mat = 1.0 - mse_mat.values/np.max(mse_mat.values)
 
          # Force symmetry for corr matrices
          pearson_corr_mat[pd.isna(pearson_corr_mat)] = 0
@@ -154,29 +139,58 @@ def ComputePaganAgreement(input_file_path, do_show_plots=False):
          np.fill_diagonal(spearman_corr_mat.values, 1)
          kendall_corr_mat[pd.isna(kendall_corr_mat)] = 0
          np.fill_diagonal(kendall_corr_mat.values, 1)
+         np.fill_diagonal(mse_corr_mat, 1)
 
          # Clustering
          (agg_pearson_sim, pearson_cluster_order_idx, pearson_agg_link) = ClusterSimilarityMatrix(pearson_corr_mat.values, method='centroid')
          (agg_spearman_sim, spearman_cluster_order_idx, spearman_agg_link) = ClusterSimilarityMatrix(spearman_corr_mat.values, method='centroid')
          (agg_kendall_sim, kendall_cluster_order_idx, kendall_agg_link) = ClusterSimilarityMatrix(kendall_corr_mat.values, method='centroid')
+         (agg_mse_sim, mse_cluster_order_idx, mse_agg_link) = ClusterSimilarityMatrix(mse_corr_mat, method='centroid')
+         (agg_ccc_sim, ccc_cluster_order_idx, ccc_agg_link) = ClusterSimilarityMatrix(ccc_mat.values, method='centroid')
+         (agg_norm_sum_delta_sim, norm_sum_delta_cluster_order_idx, norm_sum_delta_agg_link) = ClusterSimilarityMatrix(norm_sum_delta_mat.values, method='centroid')
+         (agg_norm_sum_delta_corrected_sim, norm_sum_delta_corrected_cluster_order_idx, norm_sum_delta_corrected_agg_link) = ClusterSimilarityMatrix(norm_sum_delta_corrected_mat.values, method='centroid')
 
          if do_show_plots:
+            # Pairwise correlation and error matrices
             cmap = sns.diverging_palette(220, 10, as_cmap=True)
             sns.heatmap(pearson_corr_mat, cmap=cmap, vmax=1.0, center=0, square=True, linewidths=0.5, cbar_kws={"shrink": 0.5}, ax=axs[0,0])
             sns.heatmap(spearman_corr_mat, cmap=cmap, vmax=1.0, center=0, square=True, linewidths=0.5, cbar_kws={"shrink": 0.5}, ax=axs[0,1])
             sns.heatmap(kendall_corr_mat, cmap=cmap, vmax=1.0, center=0, square=True, linewidths=0.5, cbar_kws={"shrink": 0.5}, ax=axs[0,2])
-            sns.heatmap(agg_pearson_sim, cmap=cmap, vmax=1.0, center=0, square=True, linewidths=0.5, cbar_kws={"shrink": 0.5}, ax=axs[1,0])
-            sns.heatmap(agg_spearman_sim, cmap=cmap, vmax=1.0, center=0, square=True, linewidths=0.5, cbar_kws={"shrink": 0.5}, ax=axs[1,1])
-            sns.heatmap(agg_kendall_sim, cmap=cmap, vmax=1.0, center=0, square=True, linewidths=0.5, cbar_kws={"shrink": 0.5}, ax=axs[1,2])
+            sns.heatmap(mse_corr_mat, cmap=cmap, vmax=1.0, center=0, square=True, linewidths=0.5, cbar_kws={"shrink": 0.5}, ax=axs[0,3])
+            sns.heatmap(ccc_mat, cmap=cmap, vmax=1.0, center=0, square=True, linewidths=0.5, cbar_kws={"shrink": 0.5}, ax=axs[1,0])
+            sns.heatmap(norm_sum_delta_mat, cmap=cmap, vmax=1.0, center=0, square=True, linewidths=0.5, cbar_kws={"shrink": 0.5}, ax=axs[1,1])
+            sns.heatmap(norm_sum_delta_corrected_mat, cmap=cmap, vmax=1.0, center=0, square=True, linewidths=0.5, cbar_kws={"shrink": 0.5}, ax=axs[1,2])
+
+            # Summary agreement bar graph
+            sns.barplot(data=global_agreement_df, ax=axs[1,3])
+
+            # Clustered pairwise correlation and error matrices
+            sns.heatmap(agg_pearson_sim, cmap=cmap, vmax=1.0, center=0, square=True, linewidths=0.5, cbar_kws={"shrink": 0.5}, ax=axs[2,0])
+            sns.heatmap(agg_spearman_sim, cmap=cmap, vmax=1.0, center=0, square=True, linewidths=0.5, cbar_kws={"shrink": 0.5}, ax=axs[2,1])
+            sns.heatmap(agg_kendall_sim, cmap=cmap, vmax=1.0, center=0, square=True, linewidths=0.5, cbar_kws={"shrink": 0.5}, ax=axs[2,2])
+            sns.heatmap(agg_mse_sim, cmap=cmap, vmax=1.0, center=0, square=True, linewidths=0.5, cbar_kws={"shrink": 0.5}, ax=axs[2,3])
+            sns.heatmap(agg_ccc_sim, cmap=cmap, vmax=1.0, center=0, square=True, linewidths=0.5, cbar_kws={"shrink": 0.5}, ax=axs[3,0])
+            sns.heatmap(agg_norm_sum_delta_sim, cmap=cmap, vmax=1.0, center=0, square=True, linewidths=0.5, cbar_kws={"shrink": 0.5}, ax=axs[3,1])
+            sns.heatmap(agg_norm_sum_delta_corrected_sim, cmap=cmap, vmax=1.0, center=0, square=True, linewidths=0.5, cbar_kws={"shrink": 0.5}, ax=axs[3,2])
+
             axs[0,0].title.set_text('Pearson Corr')
             axs[0,1].title.set_text('Spearman Corr')
             axs[0,2].title.set_text('Kendall Tau')
-            axs[1,0].title.set_text('Pearson Agg Clustering')
-            axs[1,1].title.set_text('Spearman Agg Clustering')
-            axs[1,2].title.set_text('Kendall Agg Clustering')
-            axs[2,2].title.set_text('Raw Annotations')
+            axs[0,3].title.set_text('MSE')
+            axs[1,0].title.set_text('CCC')
+            axs[1,1].title.set_text('Normed Sum Delta')
+            axs[1,2].title.set_text('Normed Sum Delta Corrected')
+            axs[1,3].title.set_text('Global Agreement Metrics')
+            axs[2,0].title.set_text('Pearson Agg Clustering')
+            axs[2,1].title.set_text('Spearman Agg Clustering')
+            axs[2,2].title.set_text('Kendall Agg Clustering')
+            axs[2,3].title.set_text('MSE Agg Clustering')
+            axs[3,0].title.set_text('CCC Agg Clustering')
+            axs[3,1].title.set_text('Normed Sum Delta Agg Clustering')
+            axs[3,2].title.set_text('Normed Sum Delta Corrected Agg Clustering')
+            axs[3,3].title.set_text('Raw Annotations')
             axs[2,2].legend(external_pids)
-            fig.suptitle(project_entry_name+' Pearson')
+            fig.suptitle(project_entry_name+' Agreement Measures')
             plt.show()
    return
 

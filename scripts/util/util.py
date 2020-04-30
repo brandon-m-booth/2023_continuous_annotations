@@ -4,6 +4,21 @@ import pdb
 
 zero_slope_tol = 1e-7
 
+# Columns are individual signals and rows are frames
+def NormedDiffRank(df, tol=0.005):
+   diff_df = df.diff(axis=0)
+   diff_df[np.abs(diff_df) < tol] = 0
+   norm_diff_df = np.sign(diff_df)
+   return norm_diff_df
+
+# Columns are individual signals and rows are frames
+def AccumNormedDiffRank(df, tol=0.005):
+   diff_df = df.diff(axis=0)
+   diff_df[np.abs(diff_df) < tol] = 0
+   norm_diff_df = np.sign(diff_df)
+   acc_norm_rank = norm_diff_df.cumsum(axis=0, skipna=True)
+   return acc_norm_rank
+
 def GetTSRSumSquareError(tsr_df, signal_df):
    signal_index = signal_df.index
    tsr_series = tsr_df.iloc[:,0]
