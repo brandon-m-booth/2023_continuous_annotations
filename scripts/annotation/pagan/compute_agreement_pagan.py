@@ -21,12 +21,6 @@ import agreement_metrics as agree
 valid_time_percentage = 0.20
 dtw_cache_folder_path = '../../../results/dtw_cache'
 
-def GetUpperTri(corr_mat):
-   m = corr_mat.shape[0]
-   r,c = np.triu_indices(m,1)
-   upper_tri_vals = corr_mat[r,c].flatten()
-   return upper_tri_vals
-
 # Sort labels so 0 is the group with the highest similarity, followed by 1,2,3...
 def FixLabels(sim_mat, labels):
    ulabels = sorted(np.unique(labels).tolist())
@@ -34,7 +28,7 @@ def FixLabels(sim_mat, labels):
    for ulabel in ulabels:
       label_mask = labels == ulabel
       mask_sim_mat = sim_mat.loc[label_mask, label_mask]
-      avg_sim =  np.mean(GetUpperTri(mask_sim_mat.values))
+      avg_sim =  np.mean(util.GetUpperTri(mask_sim_mat.values))
       avg_sim_per_label.append(avg_sim)
    new_label_order = np.argsort(avg_sim_per_label)[::-1]
 
@@ -325,12 +319,12 @@ def ComputePaganAgreement(input_file_path, output_path, do_show_plots=False):
          abs_sda_norm_dtw_mat = 0.5*abs_sda_dtw_mat + 0.5
 
          # Print correlation statistics
-         pearson_tri = GetUpperTri(pearson_corr_mat.values)
-         spearman_tri = GetUpperTri(spearman_corr_mat.values)
-         kendall_tau_tri = GetUpperTri(kendall_corr_mat.values)
-         ccc_tri = GetUpperTri(ccc_corr_mat.values)
-         mse_tri = GetUpperTri(mse_mat.values)
-         sda_tri = GetUpperTri(sda_mat.values)
+         pearson_tri = util.GetUpperTri(pearson_corr_mat.values)
+         spearman_tri = util.GetUpperTri(spearman_corr_mat.values)
+         kendall_tau_tri = util.GetUpperTri(kendall_corr_mat.values)
+         ccc_tri = util.GetUpperTri(ccc_corr_mat.values)
+         mse_tri = util.GetUpperTri(mse_mat.values)
+         sda_tri = util.GetUpperTri(sda_mat.values)
          combined_tri = np.vstack((pearson_tri, spearman_tri, kendall_tau_tri, ccc_tri, mse_tri, sda_tri)).T
          corr_tri_df = pd.DataFrame(data=combined_tri, columns=['Pearson', 'Spearman', 'Kendall\'s Tau', 'CCC', 'MSE', 'SDA'])
 

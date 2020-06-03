@@ -5,6 +5,12 @@ import pandas as pd
 
 zero_slope_tol = 1e-7
 
+def GetUpperTri(corr_mat):
+   m = corr_mat.shape[0]
+   r,c = np.triu_indices(m,1)
+   upper_tri_vals = corr_mat[r,c].flatten()
+   return upper_tri_vals
+
 # Columns are individual signals and rows are frames
 def NormedDiff(df, tol=0.005):
    diff_df = df.diff(axis=0)
