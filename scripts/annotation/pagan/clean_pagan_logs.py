@@ -8,9 +8,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 dt_threshold_ms = 1000
-show_plots = False
 
-def CleanPaganLog(input_file_path, output_file_path):
+def CleanPaganLog(input_file_path, output_file_path, show_plots=False):
    input_files = [input_file_path]
    if os.path.isdir(input_file_path):
       input_files = glob.glob(os.path.join(input_file_path, '*.csv'))
@@ -36,7 +35,7 @@ def CleanPaganLog(input_file_path, output_file_path):
       for project_entry_name in unique_experiment_names:
          proj_df = df.loc[df['OriginalName'] == project_entry_name, :]
          proj_pids = np.unique(proj_df['Participant'])
-         for i in range(len(proj_pids)):
+         for i in range(len(proj_pids)): # Nan out entries where 'skips' occur in the time series
             proj_pid = proj_pids[i]
             proj_pid_df = proj_df.loc[proj_df['Participant']==proj_pid,:]
             proj_pid_df = proj_pid_df.sort_values(by=['VideoTime'], kind='mergesort') # Stable sort alg.
@@ -75,9 +74,10 @@ if __name__ == '__main__':
    parser = argparse.ArgumentParser()
    parser.add_argument('--input_log', required=True, help='Path to log file or folder containing such files exported from PAGAN')
    parser.add_argument('--output_log', required=True, help='Output folder for cleaned logs')
+   parser.add_argument('--show_plots', required=False, action='store_true', help='Enables display of annotations and approximations used for agreement calculation')
    try:
       args = parser.parse_args()
    except:
       parser.print_help()
       sys.exit(0)
-   CleanPaganLog(args.input_log, args.output_log)
+   CleanPaganLog(args.input_log, args.output_log, args.show_plots)

@@ -1,23 +1,23 @@
+import pdb
 import cvxopt
 import numpy as np
-import pdb
+import pandas as pd
 
 zero_slope_tol = 1e-7
 
 # Columns are individual signals and rows are frames
-def NormedDiffRank(df, tol=0.005):
+def NormedDiff(df, tol=0.005):
    diff_df = df.diff(axis=0)
-   diff_df[np.abs(diff_df) < tol] = 0
+   diff_df.iloc[0,:] = 0 # Assume zero diff for first row
+   diff_df[np.abs(diff_df) <= tol] = 0
    norm_diff_df = np.sign(diff_df)
    return norm_diff_df
 
 # Columns are individual signals and rows are frames
-def AccumNormedDiffRank(df, tol=0.005):
-   diff_df = df.diff(axis=0)
-   diff_df[np.abs(diff_df) < tol] = 0
-   norm_diff_df = np.sign(diff_df)
-   acc_norm_rank = norm_diff_df.cumsum(axis=0, skipna=True)
-   return acc_norm_rank
+def AccumNormedDiff(df, tol=0.005):
+   norm_diff_df = NormedDiff(df, tol=tol)
+   acc_norm_diff_df = norm_diff_df.cumsum(axis=0, skipna=True)
+   return acc_norm_diff_df
 
 def GetTSRSumSquareError(tsr_df, signal_df):
    signal_index = signal_df.index
