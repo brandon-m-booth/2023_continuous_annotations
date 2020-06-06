@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 zero_slope_tol = 1e-7
+zero_value_tol = 1e-10
 
 def GetUpperTri(corr_mat):
    m = corr_mat.shape[0]
@@ -140,10 +141,13 @@ def FitLineSegmentWithIntersection(signal, i, j, a, b, x1, x2):
    # solution. Pick the line going through a*(x1+x2)/2+b and signal.iloc[i].
    if i == j:
       x_point = (x1+x2)/2.0
-      new_a = (signal.iloc[i]-(a*x_point+b))/(signal.index[i]-x_point)
-      new_b = signal.iloc[i] - new_a*signal.index[i]
+      denom = signal.index[i]-x_point
+      is_zero_denom = abs(denom) < zero_value_tol
+      if not is_zero_denom:
+         new_a = (signal.iloc[i]-(a*x_point+b))/denom
+         new_b = signal.iloc[i] - new_a*signal.index[i]
       loss_value = 0.0
-      if a == 0.0 and abs(new_a) < zero_slope_tol:
+      if is_zero_denom or (a == 0.0 and abs(new_a) < zero_slope_tol):
          x_point = (x1+x2)/2.0 # If the lines are parallel, use a valid x value
          new_a = 0.0 # This can only happen if the lines are constant, so force it to be so
          new_b = b
@@ -170,29 +174,35 @@ def FitLineSegmentWithIntersection(signal, i, j, a, b, x1, x2):
    cvxopt.solvers.options['reltol'] = 1e-12
    cvxopt.solvers.options['feastol'] = 1e-12
    cvxopt.solvers.options['show_progress'] = False
-   cvx_solution1 = cvxopt.solvers.coneqp(P=P, q=q, G=G1, h=h1, kktsolver='ldl')
-   cvx_solution2 = cvxopt.solvers.coneqp(P=P, q=q, G=G2, h=h2, kktsolver='ldl')
-   loss_value1 = cvx_solution1['primal objective'] 
-   loss_value2 = cvx_solution2['primal objective']
-   if 'optimal' in cvx_solution1['status']:
-      if 'optimal' in cvx_solution2['status'] and loss_value2 < loss_value1:
+   near_flat_line_error = False
+   try:
+      cvx_solution1 = cvxopt.solvers.coneqp(P=P, q=q, G=G1, h=h1, kktsolver='ldl')
+      cvx_solution2 = cvxopt.solvers.coneqp(P=P, q=q, G=G2, h=h2, kktsolver='ldl')
+      loss_value1 = cvx_solution1['primal objective'] 
+      loss_value2 = cvx_solution2['primal objective']
+      if 'optimal' in cvx_solution1['status']:
+         if 'optimal' in cvx_solution2['status'] and loss_value2 < loss_value1:
+            loss_value = loss_value2
+            signal_fit = np.array(cvx_solution2['x']).reshape((len(q),))
+         else:
+            loss_value = loss_value1
+            signal_fit = np.array(cvx_solution1['x']).reshape((len(q),))
+      elif 'optimal' in cvx_solution2['status']:
          loss_value = loss_value2
          signal_fit = np.array(cvx_solution2['x']).reshape((len(q),))
       else:
-         loss_value = loss_value1
-         signal_fit = np.array(cvx_solution1['x']).reshape((len(q),))
-   elif 'optimal' in cvx_solution2['status']:
-      loss_value = loss_value2
-      signal_fit = np.array(cvx_solution2['x']).reshape((len(q),))
-   else:
-      print("Warning: CVXOPT did not find an optimal solution")
-      loss_value = None
+         print("Warning: CVXOPT did not find an optimal solution")
+         loss_value = None
+   except ZeroDivisionError:
+      near_flat_line_error = True
+      loss_value = 0.0
+      signal_fit = np.zeros(2)
 
    loss_value += 0.5*np.dot(y,y)
    loss_value *= 2 # The QP minimizes 1/2 SSE, so double it here
    if loss_value < 0.0: # Handle numerical precision issues
       loss_value = 0.0
-   if a == 0.0 and abs(signal_fit[0]) < zero_slope_tol:
+   if a == 0.0 and (near_flat_line_error or abs(signal_fit[0]) < zero_slope_tol):
       x = (x1+x2)/2.0 # If the lines are parallel, use a valid x value
       signal_fit[0] = 0.0 # This can only happen if the lines are constant, so force it to be so
       signal_fit[1] = b
