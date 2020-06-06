@@ -31,7 +31,6 @@ def CheckTSRError(target_signals_path, tsr_approxs_path):
    # Get the id's of the annotation tasks
    task_ids = []
    for target_signal_file in target_signal_files:
-      #task_ids.append(int(os.path.basename(target_signal_file).split('_')[0]))
       task_ids.append(GetUserIDFromFilename(target_signal_file))
    task_ids = sorted(task_ids)
 
@@ -40,7 +39,6 @@ def CheckTSRError(target_signals_path, tsr_approxs_path):
       # Find the target signal file for this task ID
       signal_df = None
       for target_signal_file in target_signal_files:
-         #target_signal_id = int(os.path.basename(target_signal_file).split('_')[0])
          target_signal_id = GetUserIDFromFilename(target_signal_file)
          if target_signal_id == task_id:
             signal_df = pd.read_csv(target_signal_file)
@@ -56,7 +54,6 @@ def CheckTSRError(target_signals_path, tsr_approxs_path):
       tsr_files = []
       # Find the relevant TSR files for this target signal
       for tsr_approx_file in tsr_approx_files:
-         #tsr_task_id = int(os.path.basename(tsr_approx_file).split('_')[0])
          tsr_task_id = GetUserIDFromFilename(tsr_approx_file)
          if tsr_task_id == task_id:
             tsr_files.append(tsr_approx_file)
