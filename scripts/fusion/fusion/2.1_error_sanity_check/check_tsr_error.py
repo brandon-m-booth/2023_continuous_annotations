@@ -12,10 +12,17 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-show_overlay_plot = False
+show_overlay_plot = True
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir, os.path.pardir, 'util')))
 import util
+
+def GetUserIDFromFilename(filename):
+   #id = os.path.basename(filename).split('_')[0]
+   user_id = os.path.basename(filename).split('.')[0].split('_')[-1]
+   if user_id.startswith('T') and user_id[1:].isnumeric():
+      user_id = os.path.basename(filename).split('.')[0].split('_')[-2]
+   return user_id
 
 def CheckTSRError(target_signals_path, tsr_approxs_path):
    target_signal_files = glob.glob(os.path.join(target_signals_path, '*.csv'))
@@ -24,7 +31,8 @@ def CheckTSRError(target_signals_path, tsr_approxs_path):
    # Get the id's of the annotation tasks
    task_ids = []
    for target_signal_file in target_signal_files:
-      task_ids.append(int(os.path.basename(target_signal_file).split('_')[0]))
+      #task_ids.append(int(os.path.basename(target_signal_file).split('_')[0]))
+      task_ids.append(GetUserIDFromFilename(target_signal_file))
    task_ids = sorted(task_ids)
 
    has_error = False
@@ -32,10 +40,15 @@ def CheckTSRError(target_signals_path, tsr_approxs_path):
       # Find the target signal file for this task ID
       signal_df = None
       for target_signal_file in target_signal_files:
-         target_signal_id = int(os.path.basename(target_signal_file).split('_')[0])
+         #target_signal_id = int(os.path.basename(target_signal_file).split('_')[0])
+         target_signal_id = GetUserIDFromFilename(target_signal_file)
          if target_signal_id == task_id:
             signal_df = pd.read_csv(target_signal_file)
-            signal_df = signal_df.set_index('Time_seconds')
+            time_col = [x for x in signal_df.columns if 'time' in x.lower()]
+            if len(time_col) != 1:
+               print("ERROR: Could not find a single time column in file %s"%(target_signal_file))
+               return
+            signal_df = signal_df.set_index(time_col[0])
       if signal_df is None:
          print("FIXME - Could not find the target signal file for task ID: %d"%(task_id))
          pdb.set_trace()
@@ -43,7 +56,8 @@ def CheckTSRError(target_signals_path, tsr_approxs_path):
       tsr_files = []
       # Find the relevant TSR files for this target signal
       for tsr_approx_file in tsr_approx_files:
-         tsr_task_id = int(os.path.basename(tsr_approx_file).split('_')[0])
+         #tsr_task_id = int(os.path.basename(tsr_approx_file).split('_')[0])
+         tsr_task_id = GetUserIDFromFilename(tsr_approx_file)
          if tsr_task_id == task_id:
             tsr_files.append(tsr_approx_file)
 
@@ -60,7 +74,11 @@ def CheckTSRError(target_signals_path, tsr_approxs_path):
          #num_segments = tsr_df.shape[0]-1
          num_segs_regex = re.search(".+_T([0-9]+)\.csv", tsr_file)
          num_segments = int(num_segs_regex.group(1))
-         tsr_df = tsr_df.set_index('Time')
+         time_col = [x for x in tsr_df.columns if 'time' in x.lower()]
+         if len(time_col) != 1:
+            print("ERROR: Could not find a single time column in file %s"%(tsr_file))
+            return
+         tsr_df = tsr_df.set_index(time_col[0])
          sse = util.GetTSRSumSquareError(tsr_df, signal_df)
          t_vs_sse.append((num_segments, sse))
          if show_overlay_plot and num_segments > 30:
@@ -83,7 +101,7 @@ def CheckTSRError(target_signals_path, tsr_approxs_path):
       if show_overlay_plot:
          plt.figure()
          plt.plot(t,sse,'r-')
-         plt.title('Task ID: %d'%(task_id))
+         plt.title('Task ID: %s'%(task_id))
          plt.xlabel('T')
          plt.ylabel('SSE')
          plt.show()
