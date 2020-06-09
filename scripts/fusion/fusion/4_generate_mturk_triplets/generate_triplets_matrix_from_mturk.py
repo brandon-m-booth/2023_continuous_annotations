@@ -4,7 +4,8 @@ import os
 import sys
 import pdb
 import numpy as np
-from FileIO import GetCsvData, SaveCsvData
+import pandas as pd
+import argparse
 
 def GetIntervalIndexFromTimeRange(intervals_times, start_time, end_time):
    eps = 0.0000001
@@ -16,55 +17,66 @@ def GetIntervalIndexFromTimeRange(intervals_times, start_time, end_time):
    pdb.set_trace()
    return np.nan
 
-def GenerateTripletsMatrixFromMTurk(output_file_path, mturk_results_csv, intervals_csv, intervals_sampling_rate):
-   (mturk_header, mturk_results) = GetCsvData(mturk_results_csv, first_line_header=True)
-   (dummy_header, intervals_data) = GetCsvData(intervals_csv, first_line_header=False)
+def GenerateTripletsMatrixFromMTurk(mturk_batch_path, output_path):
+   mturk_df = pd.read_csv(mturk_batch_path)
 
-   mturk_header = mturk_header.tolist()
-   ref_start_idx = mturk_header.index('Input.ref_start')
-   ref_end_idx = mturk_header.index('Input.ref_end')
-   a_start_idx = mturk_header.index('Input.a_start')
-   a_end_idx = mturk_header.index('Input.a_end')
-   b_start_idx = mturk_header.index('Input.b_start')
-   b_end_idx = mturk_header.index('Input.b_end')
-   result_idx = mturk_header.index('Answer.choice')
+   # For tracking each new tuple: (clip, start, end)
+   unique_clips = []
+   triplets_mat = np.zeros((mturk_df.shape[0],3)).astype(int)
 
-   intervals_times = intervals_data.astype(float)/intervals_sampling_rate
+   # Create dict for quick lookup for const intervals paths
+   for i in range(mturk_df.shape[0]):
+      ref_clip_name = os.path.basename(mturk_df.loc[i,'Input.Reference'])
+      a_clip_name = os.path.basename(mturk_df.loc[i,'Input.A'])
+      b_clip_name = os.path.basename(mturk_df.loc[i,'Input.B'])
+      ref_start = mturk_df.loc[i,'Input.ref_start']
+      a_start = mturk_df.loc[i,'Input.a_start']
+      b_start = mturk_df.loc[i,'Input.b_start']
+      ref_end = mturk_df.loc[i,'Input.ref_end']
+      a_end = mturk_df.loc[i,'Input.a_end']
+      b_end = mturk_df.loc[i,'Input.b_end']
 
-   triplets_mat = np.zeros((mturk_results.shape[0],3)).astype(int)
-   for i in range(mturk_results.shape[0]):
-      mturk_result = mturk_results[i]
-      ref_start_time = float(mturk_result[ref_start_idx])
-      ref_end_time =  float(mturk_result[ref_end_idx])
-      a_start_time = float(mturk_result[a_start_idx])
-      a_end_time =  float(mturk_result[a_end_idx])
-      b_start_time = float(mturk_result[b_start_idx])
-      b_end_time =  float(mturk_result[b_end_idx])
-      result_str = mturk_result[result_idx]
-
-      ref_interval_idx = GetIntervalIndexFromTimeRange(intervals_times, ref_start_time, ref_end_time)
-      a_interval_idx = GetIntervalIndexFromTimeRange(intervals_times, a_start_time, a_end_time)
-      b_interval_idx = GetIntervalIndexFromTimeRange(intervals_times, b_start_time, b_end_time)
+      try:
+         ref_idx = unique_clips.index((ref_clip_name, ref_start, ref_end))
+      except ValueError:
+         unique_clips.append((ref_clip_name, ref_start, ref_end))
+         ref_idx = len(unique_clips)-1
+      try:
+         a_idx = unique_clips.index((a_clip_name, a_start, a_end))
+      except ValueError:
+         unique_clips.append((a_clip_name, a_start, a_end))
+         a_idx = len(unique_clips)-1
+      try:
+         b_idx = unique_clips.index((b_clip_name, b_start, b_end))
+      except ValueError:
+         unique_clips.append((b_clip_name, b_start, b_end))
+         b_idx = len(unique_clips)-1
 
       # Generate triplet (ref,a,b) if ||ref-a|| < ||ref-b||
-      if result_str == 'optionA':
-         triplets_mat[i] = [ref_interval_idx, a_interval_idx, b_interval_idx]
-      elif result_str == 'optionB':
-         triplets_mat[i] = [ref_interval_idx, b_interval_idx, a_interval_idx]
+      if mturk_df.loc[i,'Answer.choice'] == 'optionA':
+         triplets_mat[i] = [ref_idx, a_idx, b_idx]
+      elif mturk_df.loc[i,'Answer.choice'] == 'optionB':
+         triplets_mat[i] = [ref_idx, b_idx, a_idx]
       else:
          print('Unknown choice option in MTurk results file. FIX ME!')
          pdb.set_trace()
-         return
 
-   print('Done!')
-   SaveCsvData(output_file_path, None, triplets_mat)
+   batch_name = os.path.basename(mturk_batch_path).split('.')[0]
+   triplets_df = pd.DataFrame(data=triplets_mat)
+   triplets_df.to_csv(os.path.join(output_path, batch_name+'_triplets.csv'), header=False, index=False)
+
+   triplets_code_df = pd.DataFrame(data=np.array(unique_clips), columns=['clip_name', 'start', 'end'])
+   triplets_code_df.to_csv(os.path.join(output_path, batch_name+'_triplets_code.csv'), header=True, index=False)
+   return
 
 if __name__ == '__main__':
-   if len(sys.argv) > 4:
-      output_file_path = sys.argv[1]
-      mturk_results_csv = sys.argv[2]
-      intervals_csv_path = sys.argv[3]
-      intervals_sampling_rate = float(sys.argv[4])
-      GenerateTripletsMatrixFromMTurk(output_file_path, mturk_results_csv, intervals_csv_path, intervals_sampling_rate)
-   else:
-      print 'Please provide the following command line arguments:\n1) Output triplets file path\n2) Path to Mechanical Turk results csv file\n3) Path to constant intervals csv used in MTurk experiment\n4) The sampling rate of the constant intervals file'
+   parser = argparse.ArgumentParser()
+   parser.add_argument('--mturk_batch_path', required=True, help='Path to the mturk batch results file')
+   parser.add_argument('--output_path', required=True, help='')
+   try:
+      args = parser.parse_args()
+   except:
+      parser.print_help()
+      sys.exit(0)
+
+   GenerateTripletsMatrixFromMTurk(args.mturk_batch_path, args.output_path)
