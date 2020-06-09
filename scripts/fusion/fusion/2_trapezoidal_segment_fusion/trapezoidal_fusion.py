@@ -13,23 +13,29 @@ import statprof
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib2tikz
+import tikzplotlib
 import numpy.matlib
 import sklearn.metrics
 from multiprocessing import Pool
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir,  'util')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir, os.path.pardir,  'util')))
 import util
 
 # For debugging
 show_final_plot = True
-show_debug_plots = False
+show_debug_plots = True
 
 MAX_SHIFT_SECONDS = 5
 CONST_VAL = 0
 UP_CHANGE_VAL = 1
 DOWN_CHANGE_VAL = -1
 CONST_THRESHOLD = 1e-4
+
+def GetUserIDFromFilename(filename):
+   user_id = os.path.basename(filename).split('.')[0].split('_')[-1]
+   if user_id.startswith('T') and user_id[1:].isnumeric():
+      user_id = os.path.basename(filename).split('.')[0].split('_')[-2]
+   return user_id
 
 # Maximize the alignment of the segment sequence to feature time series using NMI
 def TimeOffsetSegmentSequence(segment_seq, features_df):
@@ -63,7 +69,7 @@ def TimeAlignSegmentSeqs(segment_seqs, sample_rate, max_shift_seconds):
       rep_shift_mat = []
       for shift_amount in range(max_time_shift+1):
          rep_shift_mat.extend(((max_time_shift+1)**i)*[shift_amount])
-      num_repeats = shifts.shape[0]/len(rep_shift_mat)
+      num_repeats = int(shifts.shape[0]/len(rep_shift_mat))
       shifts[:,-1-i] = np.matlib.repmat(rep_shift_mat, 1, num_repeats).T.reshape(-1,)
    
    # HACK - TaskA green intensity experiment
@@ -153,8 +159,7 @@ def ComputeTrapezoidalSegmentSequence(signal_df, time_index):
    return trap_segment_seq
 
 def ComputeTrapezoidalFusion(input_csv_path, output_path, target_hz=1.0, do_time_alignment=False, ground_truth_path=None, tikz_file=None):
-   # Load the ground truth
-   gt_df = pd.read_csv(ground_truth_path)
+   figs, axs = plt.subplots(2,1)
 
    # Get the largest time index in any file
    trap_seg_files = glob.glob(os.path.join(input_csv_path, '*.csv'))
@@ -166,7 +171,12 @@ def ComputeTrapezoidalFusion(input_csv_path, output_path, target_hz=1.0, do_time
    # Get the trapezoidal segment sequence of each annotation
    trap_segment_seqs = []
    time_index = np.arange(0,max_time,1.0/target_hz)
-   for trap_seg_file in trap_seg_files:
+   if show_debug_plots:
+      debug_fig, debug_axs = plt.subplots(math.ceil(len(trap_seg_files)/3), 3)
+      if debug_axs.size <= 3:
+         debug_axs = debug_axs.reshape(1,-1)
+   for i in range(len(trap_seg_files)):
+      trap_seg_file = trap_seg_files[i]
       signal_df = pd.read_csv(trap_seg_file)
       signal_df = signal_df.set_index(signal_df.columns[0])
 
@@ -175,24 +185,24 @@ def ComputeTrapezoidalFusion(input_csv_path, output_path, target_hz=1.0, do_time
       #signal = pd.Series(np.array(quantized_signal).astype(float), index=signal.index)
 
       trap_segment_seq = ComputeTrapezoidalSegmentSequence(signal_df, time_index)
+      
+      axs[0].plot(signal_df.index, signal_df.values, label=GetUserIDFromFilename(trap_seg_file))
 
       if show_debug_plots:
          half_sample_interval = 0.5/target_hz
-         fig, ax = plt.subplots()
-         ax.plot(signal_df.index, signal_df.values, 'b-')
+         debug_axs[int(i/3), i%3].plot(signal_df.index, signal_df.values, 'b-')
          plt.title("Segmented TSR: %s"%(os.path.basename(trap_seg_file)))
-         const_type_mask = trap_segment_seq == CONST_VAL
+         const_type_mask = (trap_segment_seq == CONST_VAL).values.flatten()
          const_times = trap_segment_seq.index[const_type_mask]
          change_times = trap_segment_seq.index[~const_type_mask]
          for const_time in const_times:
-            ax.axvspan(const_time-half_sample_interval, const_time+half_sample_interval, alpha=0.2, color='red')
+            debug_axs[int(i/3), i%3].axvspan(const_time-half_sample_interval, const_time+half_sample_interval, alpha=0.2, color='red')
          for change_time in change_times:
-            ax.axvspan(change_time-half_sample_interval, change_time+half_sample_interval, alpha=0.2, color='green')
-         plt.show()
+            debug_axs[int(i/3), i%3].axvspan(change_time-half_sample_interval, change_time+half_sample_interval, alpha=0.2, color='green')
 
       trap_segment_seqs.append(trap_segment_seq)
 
-   # Align the trapezoidal segment seguences to each other
+   # Align the trapezoidal segment sequences to each other
    if do_time_alignment:
       trap_segment_seqs_aligned, best_annotator_shifts = TimeAlignSegmentSeqs(trap_segment_seqs, target_hz, MAX_SHIFT_SECONDS)
       print("Best temporal shifts per annotator: "+str(best_annotator_shifts))
@@ -213,8 +223,14 @@ def ComputeTrapezoidalFusion(input_csv_path, output_path, target_hz=1.0, do_time
       fused_trap_segment_seq[row_idx] = best_segment_value
 
    # Offset the trapezoidal segment sequence in time to align with stimulus features
+   if ground_truth_path is not None:
+      gt_df = pd.read_csv(ground_truth_path)
+      
    if do_time_alignment:
       # TODO: compute features instead of using ground truth
+      if ground_truth_path is None:
+         print("No ground truth provided for alignment.  Please provide one on the command line or disable time alignment")
+         return
       fused_trap_seg_seq_aligned, best_time_offset = TimeOffsetSegmentSequence(fused_trap_segment_seq, gt_df)
       print("Best time alignment offset: "+str(best_time_offset))
    else:
@@ -222,22 +238,23 @@ def ComputeTrapezoidalFusion(input_csv_path, output_path, target_hz=1.0, do_time
    
    # Plot
    half_sample_interval = 0.5/target_hz
-   fig, ax = plt.subplots()
-   ax.plot(gt_df.iloc[:,0], gt_df.iloc[:,1], 'b-')
+   axs[0].legend()
+   if ground_truth_path is not None:
+      axs[1].plot(gt_df.iloc[:,0], gt_df.iloc[:,1], 'b-')
    plt.title("Fused Segmented Trapezoidal Sequence")
    const_type_mask = fused_trap_seg_seq_aligned == CONST_VAL
    const_times = fused_trap_seg_seq_aligned.index[const_type_mask]
    change_times = fused_trap_seg_seq_aligned.index[~const_type_mask]
    for const_time in const_times:
-      ax.axvspan(const_time-half_sample_interval, const_time+half_sample_interval, alpha=0.2, color='red')
+      axs[1].axvspan(const_time-half_sample_interval, const_time+half_sample_interval, alpha=0.2, color='red')
    for change_time in change_times:
-      ax.axvspan(change_time-half_sample_interval, change_time+half_sample_interval, alpha=0.2, color='green')
+      axs[1].axvspan(change_time-half_sample_interval, change_time+half_sample_interval, alpha=0.2, color='green')
 
    if show_final_plot:
       plt.show()
 
    if tikz_file is not None:
-      matplotlib2tikz.save(tikz_file)
+      tikzplotlib.save(tikz_file)
 
    ########
    # Output
@@ -254,6 +271,8 @@ def ComputeTrapezoidalFusion(input_csv_path, output_path, target_hz=1.0, do_time
          if start_idx is not None:
             constant_intervals.append((start_idx, idx-1))
             start_idx = None
+   if start_idx is not None:
+      constant_intervals.append((start_idx, idx))
    out_df = pd.DataFrame(data=np.array(constant_intervals))
    out_df.to_csv(os.path.join(output_path, 'constant_interval_indices.csv'), header=False, index=False)
          
@@ -270,7 +289,7 @@ if __name__ == '__main__':
    parser.add_argument('--output_path', dest='output_path', required=True, help='Output path')
    parser.add_argument('--target_hz', dest='target_hz', required=False, help='Frequency of the desired fusion')
    parser.add_argument('--do_time_alignment', dest='do_time_alignment', required=False, action="store_true", help='Flag indicating that trapezoidal segment sequence time alignment should be performed')
-   parser.add_argument('--ground_truth', dest='ground_truth', required=True, help='CSV file containing the ground truth data')
+   parser.add_argument('--ground_truth', dest='ground_truth', required=False, help='CSV file containing the ground truth data')
    parser.add_argument('--tikz', dest='tikz', required=False, help='Output path for TikZ PGF plot code') 
    try:
       args = parser.parse_args()
