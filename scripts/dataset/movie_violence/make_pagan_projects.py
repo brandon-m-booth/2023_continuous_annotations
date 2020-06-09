@@ -7,7 +7,7 @@ import uuid
 import shutil
 import argparse
 
-def MakePaganProjectsSQL(movie_clip_folder, output_anon_movie_folder, output_sql_file):
+def MakePaganProjectsSQL(movie_clip_folder, output_anon_movie_folder, output_sql_file, name_prefix=""):
    movie_clip_files = glob.glob(os.path.join(movie_clip_folder, '*.mp4'))
    pagan_user = "brandon"
 
@@ -22,7 +22,7 @@ def MakePaganProjectsSQL(movie_clip_folder, output_anon_movie_folder, output_sql
    for i in range(len(movie_clip_files)):
       movie_clip_file = movie_clip_files[i]
       proj_id = str(uuid.uuid4()).upper()
-      proj_name = 'Movie Violence Rating Experiment #'+str(i)
+      proj_name = name_prefix+' #'+str(i)
       annotation_dim = 'violence'
       annotation_type = 'bounded'
       video_sequencing = 'random'
@@ -62,9 +62,12 @@ if __name__ == '__main__':
    parser.add_argument('--movie_clip_folder', required=True, help='Path to folder containing a movie clips')
    parser.add_argument('--output_anon_movie_folder', required=True, help='Output path for the movie clips with anonymized names')
    parser.add_argument('--output_sql_file', required=True, help='Path to output file for SQL commands')
+   parser.add_argument('--name_prefix', required=False, help='Pagan project name prefix')
    try:
       args = parser.parse_args()
+      if args.name_prefix is None:
+         args.name_prefix = 'Movie Violence Rating Experiment'
    except:
       parser.print_help()
       sys.exit(0)
-   MakePaganProjectsSQL(args.movie_clip_folder, args.output_anon_movie_folder, args.output_sql_file)
+   MakePaganProjectsSQL(args.movie_clip_folder, args.output_anon_movie_folder, args.output_sql_file, args.name_prefix)
