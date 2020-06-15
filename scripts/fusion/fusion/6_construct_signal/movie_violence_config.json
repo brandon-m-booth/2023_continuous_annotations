@@ -1,10 +1,10 @@
 {
-   "flip_embedding": true,
+   "flip_embedding": false,
    "norm_scale": [-100,100],
    "interpolation_method": "trapezoidal",
-   "output_path": "/media/brandon/SailData/2019_Continuous_Annotations/results/movie_violence_annotation/pilot2/warped_annotations/",
-   "embedding_path": "/media/brandon/SailData/2019_Continuous_Annotations/results/movie_violence_annotation/pilot2/embedding/pilot_embedding.csv",
-   "embedding_code_path": "/media/brandon/SailData/2019_Continuous_Annotations/results/movie_violence_annotation/pilot2/mturk_batch_results/Batch_282033_batch_results_triplets_code.csv",
+   "output_path": "/media/brandon/SailData/2019_Continuous_Annotations/results/movie_violence_annotation/pilot2/warped_annotations/pairs/",
+   "embedding_path": "/media/brandon/SailData/2019_Continuous_Annotations/results/movie_violence_annotation/pilot2/embedding/pairs/embedding.csv",
+   "embedding_code_path": "/media/brandon/SailData/2019_Continuous_Annotations/results/movie_violence_annotation/pilot2/mturk_batch_results/pairs/Batch_4078107_batch_results_pairs_code.csv",
    "annotation_sampling_rate": 1000,
    "clip_data":
    [
