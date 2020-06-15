@@ -21,9 +21,8 @@ function tsteEmbedding(triplets_file_path, output_file_path)
     embedding = computeEmbedding(triplets, 1.0, 1.0);
 
     %% Rescale each embedding uniformly to [0,1] interval
-    mean_emb = mean(embedding);
-    max_emb = max(abs(embedding-mean_emb));
-    embedding = (embedding-mean_emb)/max_emb + mean_emb;
-    embedding = 0.5*embedding + 0.5;
+    embedding = embedding-mean(embedding);
+    max_emb = max(abs(embedding));
+    embedding = 0.5*embedding/max_emb + 0.5;
 
     csvwrite(output_file_path, embedding);
