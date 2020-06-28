@@ -66,7 +66,8 @@ def CleanPaganLog(input_file_path, output_file_path, show_plots=False):
                output_df = proj_pid_df
             else:
                output_df = pd.concat((output_df, proj_pid_df), axis=0, ignore_index=True)
-      output_df.to_csv(output_file, index=False, header=True)
+      if output_df is not None:
+         output_df.to_csv(output_file, index=False, header=True)
                   
    return
 

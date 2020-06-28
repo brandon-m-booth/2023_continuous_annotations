@@ -36,7 +36,10 @@ def PlotPaganLog(input_file_path):
             external_pid = pid_df['ExternalPID'].iloc[0]
             external_pids.append(external_pid)
             c = next(palette)
-            subplot_ax = axs[int(i/num_cols_plot),i%num_cols_plot]
+            if hasattr(axs, '__iter__'):
+               subplot_ax = axs[int(i/num_cols_plot),i%num_cols_plot]
+            else:
+               subplot_ax = axs
             subplot_ax.plot(anno_time, anno_vals, 'o-', color=c)
             subplot_ax.set_ylim([-100,100])
             subplot_ax.set_title(external_pid)

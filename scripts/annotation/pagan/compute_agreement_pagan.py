@@ -58,7 +58,8 @@ def GetHierarchyClusters(link, k, method='maxclust'):
 # Outputs the optimal clustering given a collection of cluster labels from different methods
 def ComputeOptClusters(cluster_df):
    #opt_cluster_cols = ['SDA Spectral', 'Kendall\'s Tau Spectral']
-   opt_cluster_cols = ['SDA Spectral']
+   #opt_cluster_cols = ['SDA Spectral']
+   opt_cluster_cols = ['DTW SDA Spectral']
    opt_df = cluster_df[opt_cluster_cols]
    opt_mask = opt_df.sum(axis=1) < len(opt_cluster_cols)/2.0
    return opt_df.index[opt_mask]
@@ -119,10 +120,13 @@ def ComputePaganAgreement(input_file_path, output_path, do_show_plots=False):
             if not max(anno_time) >= valid_time_percentage*end_time:
                print('Ignoring annotation '+external_pid+' because end time is: '+str(max(anno_time))+'/'+str(end_time))
                continue
-            if len(np.unique(anno_vals)) == 1:
-               print('Ignoring annotation '+external_pid+' because it has no variability')
-               continue
+            #if len(np.unique(anno_vals)) == 1:
+            #   print('Ignoring annotation '+external_pid+' because it has no variability')
+            #   continue
 
+            # Replace NaN values with inf values temporarily. NaNs in the data indicate missing values
+            # and interfere with the interpolation later
+            anno_df = anno_df.replace(to_replace=np.nan, value=np.inf)
             if combined_anno_df is None:
                combined_anno_df = anno_df
             else:
@@ -130,6 +134,9 @@ def ComputePaganAgreement(input_file_path, output_path, do_show_plots=False):
          combined_anno_df = combined_anno_df.sort_index()
          combined_anno_df = combined_anno_df.interpolate(method='linear', axis=0)
          combined_anno_df = combined_anno_df.groupby(level=0).mean()
+         
+         # Undo the temporary replacement of NaN values with Inf
+         combined_anno_df = combined_anno_df.replace(to_replace=np.inf, value=np.nan)
 
          # Compute time-warped variant of the combined annotations.  We resample the annotations every 100ms
          # so a maximum time window can be applied by DTW
