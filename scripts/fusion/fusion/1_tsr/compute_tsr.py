@@ -273,14 +273,33 @@ def ComputeOptimalTSRFixedSegmentsArgs(args):
 
 # Dynamic program to find the optimal trapezoidal segmented regression
 def ComputeOptimalTSR(input_csv_path, min_segments, max_segments, output_csv_path, opt_strategy=None, tikz_file=None):
-   if not os.path.isdir(os.path.dirname(output_csv_path)):
-      os.makedirs(os.path.dirname(output_csv_path))
+   if output_csv_path.endswith('.csv'):
+      if not os.path.isdir(os.path.dirname(output_csv_path)):
+         os.makedirs(os.path.dirname(output_csv_path))
+   else:
+      if not os.path.isdir(output_csv_path):
+         os.makedirs(output_csv_path)
+      output_csv_path = os.path.join(output_csv_path, os.path.basename(input_csv_path))
 
    # Get the signal data
    signal_df = pd.read_csv(input_csv_path)
    time = signal_df.iloc[:,0]
    signal = signal_df.iloc[:,1]
    signal.index = time
+
+   if min_segments is None and max_segments is None:
+      plt.ion()
+      plt.plot(time, signal)
+      plt.show()
+      min_segments = int(input("Enter the minimum number of segments: "))
+      max_segments = int(input("Enter the maximum number of segments: "))
+      plt.close()
+      plt.ioff()
+
+   # Drop NaN values
+   nan_mask = signal.isna()
+   time = time[~nan_mask]
+   signal = signal[~nan_mask]
 
    # Quantize the signal to remove meaningless tiny differences between values
    quantized_signal= [decimal.Decimal(x).quantize(decimal.Decimal('0.00001'), rounding=decimal.ROUND_HALF_UP) for x in signal]
@@ -380,7 +399,7 @@ def ComputeOptimalTSR(input_csv_path, min_segments, max_segments, output_csv_pat
 if __name__ == '__main__':
    parser = argparse.ArgumentParser()
    parser.add_argument('--input', dest='input_csv', required=True, help='CSV-formatted input signal file with (first column: time, second: signal value)')
-   parser.add_argument('--segments', dest='num_segments', required=True, help='Number of segments to use in the approximation. Can be an integer or a range (e.g. 1-10)')
+   parser.add_argument('--segments', dest='num_segments', required=False, help='Number of segments to use in the approximation. Can be an integer or a range (e.g. 1-10). If no input is provided, the user will be prompted for this values')
    parser.add_argument('--opt_strategy', dest='opt_strategy', default=None, required=False, help='Strategy for determining which regression to save among the best fit TSRs for the input range of segments to test.  Allowed values are: "elbow" (uses elbow minimization), "minimum" ( pick the TSR with the smallest loss value). If this flag is not set, separate output will be written for each number of segments in the specified range.')
    parser.add_argument('--output', dest='output_csv', required=True, help='Output csv path')
    parser.add_argument('--tikz', dest='tikz', required=False, help='Output path for TikZ PGF plot code') 
@@ -389,6 +408,7 @@ if __name__ == '__main__':
    except:
       parser.print_help()
       sys.exit(0)
+
    input_csv_path = args.input_csv
    num_segments = args.num_segments
    if num_segments:
@@ -398,6 +418,8 @@ if __name__ == '__main__':
       else:
          min_segments = int(num_segments)
          max_segments = int(num_segments)
+   else:
+      min_segments = max_segments = None
    opt_strategy = args.opt_strategy
    tikz_file = args.tikz
    output_csv_path = args.output_csv
