@@ -6,6 +6,7 @@ import glob
 import uuid
 import shutil
 import argparse
+import base64
 
 def MakePaganProjectsSQL(movie_clip_folder, output_anon_movie_folder, output_sql_file, name_prefix=""):
    movie_clip_files = glob.glob(os.path.join(movie_clip_folder, '*.mp4'))
@@ -31,8 +32,10 @@ def MakePaganProjectsSQL(movie_clip_folder, output_anon_movie_folder, output_sql
       num_participant_runs = 1
       start_message = 'Please annotate the level of violence as you perceive it in real time as you watch the video.  The cursor starts at the bottom of the scale (no violence). The top of the scale represents extreme violence. There may be no violence depicted in this clip.'
       upload_message = ''
-      end_message = 'Your annotation has been saved. Please share your thoughts about this annotation experiment in the anonymous exit survey. You will receive a survey code to complete your M-Turk HIT once the survey is complete.'
-      survey_link = 'https://docs.google.com/forms/d/e/1FAIpQLScNQERvASo53qdTfVzfDZgkmwy62h23dyARjqNzIA11MwAEsQ/viewform?usp=sf_link'
+      #end_message = 'Your annotation has been saved. Please share your thoughts about this annotation experiment in the anonymous exit survey. You will receive a survey code to complete your M-Turk HIT once the survey is complete.'
+      #survey_link = 'https://docs.google.com/forms/d/e/1FAIpQLScNQERvASo53qdTfVzfDZgkmwy62h23dyARjqNzIA11MwAEsQ/viewform?usp=sf_link'
+      end_message = 'Your annotation has been saved. Please copy the following code and paste it into the M-Turk HIT to complete the task: %s'%(base64.b64encode(proj_id))
+      survey_link=''
       sound_enabled = 'on'
       values_list = [pagan_user, proj_id, proj_name, annotation_dim, annotation_type, 'upload', video_sequencing, endless_mode, num_entries, num_participant_runs, end_message, survey_link, sound_enabled, start_message, 'false']
       sql_values = []
