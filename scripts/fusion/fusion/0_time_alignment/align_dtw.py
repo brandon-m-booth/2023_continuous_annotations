@@ -30,10 +30,12 @@ def AlignDTW(input_anno_dir, output_anno_dir, max_warp_seconds=5, resample_hz=No
 
       df = pd.read_csv(input_anno)
 
-      # Resample for even spacing 
+      # Use time column as an index
       df = df.set_index(df.columns[0])
-      df.index = [datetime.fromtimestamp(t/1000.0, pytz.utc) for t in df.index]
-      df = df.resample('100ms').mean().interpolate()
+      #for cidx in range(df.shape[1]):
+      #   plt.plot(df.index, df.iloc[:,cidx])
+      #plt.show()
+      #continue
       #df.index = [t.timestamp() for t in df.index]
 
       # Use the most agreeable annotation as the reference
@@ -42,12 +44,28 @@ def AlignDTW(input_anno_dir, output_anno_dir, max_warp_seconds=5, resample_hz=No
       np.fill_diagonal(sda_mat.values, 0)
       mean_agree = sda_mat.mean(axis=0)
       ref_idx = np.argmax(mean_agree)
-      df_ref = df.iloc[:,ref_idx]
+
+      # Resample for even spacing
+      df.index = [datetime.fromtimestamp(t/1000.0, pytz.utc) for t in df.index]
+      df_interp = df.resample('100ms').mean().interpolate()
+      df_ref = df_interp.iloc[:,ref_idx]
       
-      dtw_df = agree.DTWReference(df, df_ref, max_warp_distance=max_warp_seconds*10)
+      dtw_df = agree.DTWReference(df_interp, df_ref, max_warp_distance=max_warp_seconds*10)
+
+      # Add the NaN values back in where they existed in the original signal
+      dummy_df = df_interp.copy()
+      for col in dummy_df.columns:
+         dummy_df[col].values[:] = np.nan
+      merge_nan_df = df.replace(to_replace=np.nan, value=np.inf)
+      for col in df.columns:
+         merge_nan_col_df = merge_nan_df[col].combine(dummy_df[col], min)
+         merge_nan_col_df.interpolate(method='nearest', inplace=True)
+         inf_mask = np.isinf(merge_nan_col_df.loc[dummy_df.index])
+         dtw_df[col][inf_mask] = np.nan
 
       if resample_hz is not None:
-         dtw_df = dtw_df.resample(pd.to_timedelta(str(1.0/resample_hz)+'s')).mean().interpolate()
+         #dtw_df = dtw_df.resample(pd.to_timedelta(str(1.0/resample_hz)+'s')).mean().interpolate()
+         dtw_df = dtw_df.resample(pd.to_timedelta(str(1.0/resample_hz)+'s')).mean()
          time_scale = 1.0
       else:
          time_scale = 10.0 # 100ms -> seconds
