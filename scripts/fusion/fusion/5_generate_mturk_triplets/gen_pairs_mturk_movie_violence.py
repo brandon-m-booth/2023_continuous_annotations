@@ -14,6 +14,8 @@ import pandas as pd
 
 max_hits_per_batch = 5000
 pairs_keep_scalar = 2
+add_context_duration_threshold = 8
+add_context_transition_threshold = 6
 keep_all_pairs = True
 
 def ClipMovieFile(movie_file_path, clip_time_df, output_folder):
@@ -22,9 +24,17 @@ def ClipMovieFile(movie_file_path, clip_time_df, output_folder):
       start_time = str(clip_time_df.iloc[i,0])
       end_time = str(clip_time_df.iloc[i,1])
       duration = str(clip_time_df.iloc[i,1]-clip_time_df.iloc[i,0])
+      if float(duration) < 0.0:
+         print("ERROR: Clip duration is less than zero. FIX ME!")
+         pdb.set_trace()
+      elif float(duration) == 0.0:
+         # Add a tiny amount to avoid zero-length clips
+         start_time = str(max(0,float(start_time)-0.1))
+         end_time = str(float(end_time) + 0.1)
+         duration = 0.2
       clip_suffix = '_s'+start_time+'e'+end_time
       output_file_path = os.path.join(output_folder, os.path.basename(movie_file_path).split('.')[0]+clip_suffix+'.mp4')
-      #os.system('ffmpeg -y -i %s -ss %s -t %s -c:v libx264 -crf 23 -c:a libvo_aacenc -ac 2 -movflags faststart %s'%(movie_file_path, start_time, duration, output_file_path))
+      os.system('ffmpeg -y -i %s -ss %s -t %s -c:v libx264 -crf 23 -c:a libvo_aacenc -ac 2 -movflags faststart %s'%(movie_file_path, start_time, duration, output_file_path))
       output_movie_paths.append(output_file_path)
 
    return output_movie_paths
@@ -49,21 +59,46 @@ def GeneratePairsMechanicalTurkMovieViolence(config_json_path):
          clip_time_df.iloc[row_idx,0] = fused_seg_df.iloc[const_intervals_df.iloc[row_idx,0],0]
          clip_time_df.iloc[row_idx,1] = fused_seg_df.iloc[const_intervals_df.iloc[row_idx,1],0]
 
-      for row_idx in range(clip_time_df.shape[0]):
+      # For each constant interval which is shorter in duration than the threshold, include
+      # the transition between the two intervals in the duration.  This adds a bit of context leading 
+      # into the shorter intervals
+      for row_idx in range(1,clip_time_df.shape[0]):
          duration = clip_time_df.iloc[row_idx,1] - clip_time_df.iloc[row_idx,0]
-         # Include transitions between constant intervals in the shortest adjacent constant interval window
-         if row_idx > 0:
-            prev_duration = clip_time_df.iloc[row_idx-1,1] - clip_time_df.iloc[row_idx-1,0]
-            if prev_duration > duration:
-               clip_time_df.iloc[row_idx,0] = fused_seg_df.iloc[const_intervals_df.iloc[row_idx-1,1],0]
-         if row_idx < clip_time_df.shape[0]-1:
-            next_duration = clip_time_df.iloc[row_idx+1,1] - clip_time_df.iloc[row_idx+1,0]
-            if next_duration > duration:
-               clip_time_df.iloc[row_idx,1] = fused_seg_df.iloc[const_intervals_df.iloc[row_idx+1,0],0]
+         #prev_duration = clip_time_df.iloc[row_idx-1,1] - clip_time_df.iloc[row_idx-1,0]
+         prev_transition_duration = clip_time_df.iloc[row_idx,0] - clip_time_df.iloc[row_idx-1,1]
+         if prev_transition_duration > 0:
+            if duration <= add_context_duration_threshold and prev_transition_duration <= add_context_transition_threshold:
+               clip_time_df.iloc[row_idx,0] = clip_time_df.iloc[row_idx-1,1]
+
+      # For any remaining transitions, allow short transitions for short clips to be absorbed at
+      # the end of the clips.  This helps protect against alignment or lag correction imperfections
+      for row_idx in range(clip_time_df.shape[0]-1):
+         duration = clip_time_df.iloc[row_idx,1] - clip_time_df.iloc[row_idx,0]
+         next_transition_duration = clip_time_df.iloc[row_idx+1,0] - clip_time_df.iloc[row_idx,1]
+         if next_transition_duration > 0:
+            if duration <= add_context_duration_threshold and next_transition_duration <= add_context_transition_threshold:
+               clip_time_df.iloc[row_idx,1] = clip_time_df.iloc[row_idx+1,0]
+            
    
       clip_time_df -= config['lag_shift_seconds']
       clip_time_df.iloc[-1,1] += config['lag_shift_seconds']
-      clip_time_df = clip_time_df.clip(lower=0.0)
+
+      # Special case: if the lag shift moves the end time below zero, then ignore the shift for
+      # the affected clips.  Make sure to avoid overlap
+      below_lag_clip_time_mask = clip_time_df.iloc[:,1] <= config['lag_shift_seconds']
+      if np.any(below_lag_clip_time_mask):
+         first_safe_idx = below_lag_clip_time_mask.idxmin()
+         for clip_idx in range(first_safe_idx):
+            clip_time_df.iloc[clip_idx,:] += config['lag_shift_seconds']
+         clip_time_df.iloc[first_safe_idx,0] += config['lag_shift_seconds']
+      clip_time_df = clip_time_df.clip(lower=0.0) # For sanity, but shouldn't be necessary any longer
+
+      # Sanity check - ensure no overlap
+      for row_idx in range(clip_time_df.shape[0]-1):
+         if clip_time_df.iloc[row_idx,1] > clip_time_df.iloc[row_idx+1,0]:
+            print("ERROR: overlap detected. Fix me!")
+            pdb.set_trace()
+
       clipped_movie_paths = ClipMovieFile(clip_data['source_mp4_path'], clip_time_df, config['output_path'])
 
       for row_idx in range(const_intervals_df.shape[0]):

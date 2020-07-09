@@ -29,6 +29,7 @@ MAX_SHIFT_SECONDS = 5
 CONST_VAL = 0
 UP_CHANGE_VAL = 1
 DOWN_CHANGE_VAL = -1
+INVALID_VAL = np.nan
 CONST_THRESHOLD = 1e-4
 
 def GetUserIDFromFilename(filename):
@@ -89,7 +90,7 @@ def TimeAlignSegmentSeqs(segment_seqs, sample_rate, max_shift_seconds):
          annotator_shift = shift[annotator_idx]
          shifted_segment_seq = segment_seqs[annotator_idx][annotator_shift:]
          shifted_seqs_mat[annotator_idx,0:len(shifted_segment_seq)] = shifted_segment_seq.values.reshape(-1,)
-      agreement = np.sum(np.abs(np.sum(shifted_seqs_mat, axis=0)))
+      agreement = np.nansum(np.abs(np.nansum(shifted_seqs_mat, axis=0)))
       if agreement >= max_agreement:
          max_agreement = agreement
          if np.sum(shift) < min_shift_sum:
@@ -142,6 +143,16 @@ def ComputeTrapezoidalSegmentSequence(signal_df, time_index):
             mask1 = trap_segment_seq.index >= segment_start_time
             mask2 = trap_segment_seq.index < segment_end_time
             trap_segment_seq.iloc[mask1 & mask2,i] = DOWN_CHANGE_VAL
+         elif np.isnan(signal.iloc[next_time_index]) or np.isnan(signal.iloc[next_time_index-1]):
+            while np.isnan(signal.iloc[next_time_index]) or np.isnan(signal.iloc[next_time_index-1]):
+               next_time_index += 1
+               if next_time_index == signal_df.shape[0]:
+                  segment_end_time = signal.index[-1] + 1
+                  break
+               segment_end_time = signal.index[next_time_index]
+            mask1 = trap_segment_seq.index >= segment_start_time
+            mask2 = trap_segment_seq.index < segment_end_time
+            trap_segment_seq.iloc[mask1 & mask2,i] = INVALID_VAL
          else:
             print("ERROR: This case should never happen. Fix me!")
             pdb.set_trace()
@@ -150,16 +161,18 @@ def ComputeTrapezoidalSegmentSequence(signal_df, time_index):
 
       # Fill in trailing signal values with constant segments
       mask = trap_segment_seq.index >= segment_end_time
-      trap_segment_seq.iloc[mask,i] = CONST_VAL
-
-   if np.any(np.isnan(trap_segment_seq)):
-      print("Error: Found NaN values in the trapezoidal segment sequence. This should not happen. Fix me!")
-      pdb.set_trace()
+      if np.isnan(signal.iloc[-1]):
+         trap_segment_seq.iloc[mask,i] = INVALID_VAL
+      else:
+         trap_segment_seq.iloc[mask,i] = CONST_VAL
 
    return trap_segment_seq
 
 def ComputeTrapezoidalFusion(input_csv_path, output_path, target_hz=1.0, do_time_alignment=False, ground_truth_path=None, tikz_file=None):
    figs, axs = plt.subplots(2,1)
+
+   if not os.path.isdir(output_path):
+      os.makedirs(output_path)
 
    # Get the largest time index in any file
    trap_seg_files = glob.glob(os.path.join(input_csv_path, '*.csv'))
@@ -193,8 +206,9 @@ def ComputeTrapezoidalFusion(input_csv_path, output_path, target_hz=1.0, do_time
          debug_axs[int(i/3), i%3].plot(signal_df.index, signal_df.values, 'b-')
          plt.title("Segmented TSR: %s"%(os.path.basename(trap_seg_file)))
          const_type_mask = (trap_segment_seq == CONST_VAL).values.flatten()
+         change_type_mask = np.logical_or((trap_segment_seq == UP_CHANGE_VAL).values.flatten(), (trap_segment_seq == DOWN_CHANGE_VAL).values.flatten())
          const_times = trap_segment_seq.index[const_type_mask]
-         change_times = trap_segment_seq.index[~const_type_mask]
+         change_times = trap_segment_seq.index[change_type_mask]
          for const_time in const_times:
             debug_axs[int(i/3), i%3].axvspan(const_time-half_sample_interval, const_time+half_sample_interval, alpha=0.2, color='red')
          for change_time in change_times:
@@ -243,8 +257,9 @@ def ComputeTrapezoidalFusion(input_csv_path, output_path, target_hz=1.0, do_time
       axs[1].plot(gt_df.iloc[:,0], gt_df.iloc[:,1], 'b-')
    plt.title("Fused Segmented Trapezoidal Sequence")
    const_type_mask = fused_trap_seg_seq_aligned == CONST_VAL
+   change_type_mask = np.logical_or(fused_trap_seg_seq_aligned == UP_CHANGE_VAL, fused_trap_seg_seq_aligned == DOWN_CHANGE_VAL)
    const_times = fused_trap_seg_seq_aligned.index[const_type_mask]
-   change_times = fused_trap_seg_seq_aligned.index[~const_type_mask]
+   change_times = fused_trap_seg_seq_aligned.index[change_type_mask]
    for const_time in const_times:
       axs[1].axvspan(const_time-half_sample_interval, const_time+half_sample_interval, alpha=0.2, color='red')
    for change_time in change_times:
