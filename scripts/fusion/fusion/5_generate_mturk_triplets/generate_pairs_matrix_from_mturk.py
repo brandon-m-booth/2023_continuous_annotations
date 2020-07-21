@@ -3,6 +3,7 @@
 import os
 import sys
 import pdb
+import glob
 import numpy as np
 import pandas as pd
 import argparse
@@ -18,7 +19,23 @@ def GetIntervalIndexFromTimeRange(intervals_times, start_time, end_time):
    return np.nan
 
 def GeneratePairsMatrixFromMTurk(mturk_batch_path, output_path):
-   mturk_df = pd.read_csv(mturk_batch_path)
+   if os.path.isdir(mturk_batch_path):
+      # Load and combine all of the mturk batch results
+      mturk_df = None
+      mturk_files = glob.glob(os.path.join(mturk_batch_path, '*.csv'))
+      for mturk_file in mturk_files:
+         df = pd.read_csv(mturk_file)
+         if mturk_df is None:
+            mturk_df = df
+         else:
+            mturk_df = mturk_df.append(df, ignore_index=True)
+      output_pairs_path = os.path.join(output_path, 'mturk_batch_results_pairs.csv')
+      output_pairs_code_path = os.path.join(output_path, 'mturk_batch_results_pairs_code.csv')
+   else:
+      mturk_df = pd.read_csv(mturk_batch_path)
+      batch_name = os.path.basename(mturk_batch_path).split('.')[0]
+      output_pairs_path = os.path.join(output_path, batch_name+'_pairs.csv')
+      output_pairs_code_path = os.path.join(output_path, batch_name+'_pairs_code.csv')
 
    # For tracking each new tuple: (clip, start, end)
    unique_clips = []
@@ -53,12 +70,11 @@ def GeneratePairsMatrixFromMTurk(mturk_batch_path, output_path):
          print('Unknown choice option in MTurk results file. FIX ME!')
          pdb.set_trace()
 
-   batch_name = os.path.basename(mturk_batch_path).split('.')[0]
    pairs_df = pd.DataFrame(data=pairs_mat)
-   pairs_df.to_csv(os.path.join(output_path, batch_name+'_pairs.csv'), header=False, index=False)
+   pairs_df.to_csv(output_pairs_path, header=False, index=False)
 
    pairs_code_df = pd.DataFrame(data=np.array(unique_clips), columns=['clip_name', 'start', 'end'])
-   pairs_code_df.to_csv(os.path.join(output_path, batch_name+'_pairs_code.csv'), header=True, index=False)
+   pairs_code_df.to_csv(output_pairs_code_path, header=True, index=False)
    return
 
 if __name__ == '__main__':

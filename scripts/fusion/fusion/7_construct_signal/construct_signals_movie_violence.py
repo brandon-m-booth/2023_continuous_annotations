@@ -12,6 +12,64 @@ import tikzplotlib
 from FileIO import GetCsvData, SaveCsvData
 from PrettyPlotter import pretty
 
+
+def MergeClipSignals(json_config_path):
+   with open(json_config_path) as config_fp:
+      config = json.load(config_fp)
+
+   if not os.path.isdir(config['merged_output_path']):
+      os.makedirs(config['merged_output_path'])
+
+   movie_cut_times_df = pd.read_csv(config['movie_cut_times_path'])
+   movie_cut_times_df['Movie Name'] = [os.path.basename(x).split('.')[0] for x in movie_cut_times_df['Movie Path']]
+
+   movie_names = [x['match_name'].split('_cut')[0] for x in config['clip_data']]
+   movie_names = np.unique(movie_names)
+
+   # Prepare dict of movie clips grouped by movie name
+   signals_dict = {}
+   for movie_name in movie_names:
+      signals_dict[movie_name] = []
+
+   # Find the clips belonging to each movie by name
+   constructed_signal_paths = glob.glob(os.path.join(config['output_path'], '*.csv'))
+   for constructed_signal_path in constructed_signal_paths:
+      found_movie = False
+      for movie_name in movie_names:
+         if movie_name in os.path.basename(constructed_signal_path):
+            found_movie = True
+            break
+      if not found_movie:
+         print("ERROR: Could not find parent movie for clip %s"%(constructed_signal_path))
+         pdb.set_trace()
+
+      signals_dict[movie_name].append(constructed_signal_path)
+
+   # Sort the clips for each movie by cut order (e.g., cut1, cut2, etc.) then merge them
+   for movie_name in movie_names:
+      movie_clip_paths = signals_dict[movie_name]
+      sorted_movie_clip_paths = sorted(movie_clip_paths, key=lambda clip_path: int(os.path.basename(clip_path).split('_cut')[1].split('.')[0]))
+
+      merged_df = None
+      for movie_clip_path in sorted_movie_clip_paths:
+         signal_df = pd.read_csv(movie_clip_path)
+
+         # Find the corresponding movie cut times entry
+         cut_name = os.path.basename(movie_clip_path).split('_')[-1].split('.')[0]
+         cut_time_df = movie_cut_times_df.loc[(movie_cut_times_df['Movie Name']==movie_name).values & (movie_cut_times_df['Cut Name']==cut_name).values, :]
+         start_time_sec = cut_time_df['Start Time Sec'].iloc[0]
+         end_time_sec = cut_time_df['End Time Sec'].iloc[0]
+         signal_df.iloc[:,0] += start_time_sec
+
+         if merged_df is None:
+            merged_df = signal_df
+         else:
+            merged_df = pd.concat((merged_df,signal_df), axis=0, ignore_index=True)
+
+      merged_df.sort_values(by='Time(sec)', inplace=True)
+      merged_df.to_csv(os.path.join(config['merged_output_path'], 'warped_annotation_'+movie_name+'.csv'), index=False)
+   return
+
 def DoConstructSignal(json_config_path, do_show_plots=True):
    with open(json_config_path) as config_fp:
       config = json.load(config_fp)
@@ -33,7 +91,10 @@ def DoConstructSignal(json_config_path, do_show_plots=True):
    embedding_df = embedding_df*(config['norm_scale'][1]-config['norm_scale'][0]) + config['norm_scale'][0]
 
    for clip_data in config['clip_data']:
-      annotation_files = glob.glob(os.path.join(clip_data['annotations_folder'], '*.csv'))
+      if '.' in clip_data['annotations_folder']: # Assume path points to a file(s)
+         annotation_files = glob.glob(clip_data['annotations_folder'])
+      else:
+         annotation_files = glob.glob(os.path.join(clip_data['annotations_folder'], '*.csv'))
       annotations_df = None
       for annotation_file in annotation_files:
          anno_df = pd.read_csv(annotation_file, index_col=0)
@@ -165,6 +226,8 @@ def DoConstructSignal(json_config_path, do_show_plots=True):
 
       output_signal_path = os.path.join(config['output_path'], 'warped_annotation_'+clip_data['match_name']+'.csv')
       constructed_signal.to_csv(output_signal_path, index=False, header=True)
+
+   MergeClipSignals(json_config_path)
 
 if __name__=='__main__':
    parser = argparse.ArgumentParser()

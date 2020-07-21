@@ -1,5 +1,6 @@
 function tspeEmbedding(pairs_file_path, output_file_path)
     [file_path,file_name,ext] = fileparts(mfilename('fullpath'));
+    addpath(strcat(file_path,'/tste'));
 
     if ~exist(pairs_file_path, 'file')
       return
