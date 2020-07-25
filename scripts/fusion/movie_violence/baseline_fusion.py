@@ -6,6 +6,7 @@ import sys
 import pdb
 import glob
 import argparse
+import tikzplotlib
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -91,6 +92,10 @@ def ComputeBaselineAnnotations(input_annos_path, clip_times_csv_path, output_ann
          plt.xlabel('Time(s)')
          plt.ylabel('Annotated Value')
          plt.title(movie_name)
+
+         output_tex_path = os.path.join(output_annos_path, movie_name+'_fused_baseline.tex')
+         tikzplotlib.save(output_tex_path)
+
          plt.show()
 
    return
