@@ -2,17 +2,19 @@
 \begin{tikzpicture}
 
 \begin{axis}[
-legend cell align={left},
-legend style={fill opacity=0.8, draw opacity=1, text opacity=1, at={(0.5,0.91)}, anchor=north, draw=white!80!black},
+%legend cell align={left},
+%legend style={fill opacity=0.8, draw opacity=1, text opacity=1, at={(0.5,0.91)}, anchor=north, draw=white!80!black},
 tick align=outside,
 tick pos=left,
-title={The\_Hustle},
+width=\figureWidth,
+height=\figureHeight,
+%title={The\_Hustle},
 x grid style={white!69.0196078431373!black},
 xmin=-264.85, xmax=5891.85,
 xtick style={color=black},
-y grid style={white!69.0196078431373!black},
+%y grid style={white!69.0196078431373!black},
 ymin=-0.0349693396226415, ymax=1.06435613207547,
-ytick style={color=black}
+%ytick style={color=black}
 ]
 \addplot [semithick, red, dashed]
 table {%
@@ -5625,7 +5627,7 @@ table {%
 5611 0.055
 5612 0.055
 };
-\addlegendentry{Baseline}
+%\addlegendentry{Baseline}
 \addplot [semithick, blue]
 table {%
 15 0.255515623440152
@@ -11237,7 +11239,7 @@ table {%
 5611 0.171495956873315
 5612 0.171495956873315
 };
-\addlegendentry{Signal Warped}
+%\addlegendentry{Signal Warped}
 \end{axis}
 
 \end{tikzpicture}

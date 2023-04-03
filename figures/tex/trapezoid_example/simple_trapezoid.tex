@@ -1,0 +1,47 @@
+% This file was created by matplotlib2tikz v0.6.11.
+\begin{tikzpicture}
+
+\definecolor{color1}{RGB}{158, 12, 41}
+\definecolor{color2}{RGB}{231, 186, 71}
+
+\begin{axis}[
+width=0.35\columnwidth,
+height=0.20\columnwidth,
+xmin=-0.044035, xmax=5.02,
+ymin=0.149465, ymax=0.946635,
+tick align=outside,
+tick pos=left,
+x grid style={lightgray!92.02614379084967!black},
+y grid style={lightgray!92.02614379084967!black},
+scale only axis,
+scaled ticks=false,
+]
+
+\addplot [very thick, color1, forget plot]
+table {%
+0.0 0.2
+1.0 0.2
+};
+\addplot [very thick, color2, forget plot]
+table {%
+1.0 0.2
+1.8 0.4
+};
+\addplot [very thick, color1, forget plot]
+table {%
+1.8 0.4
+3.2 0.4
+};
+\addplot [very thick, color2, forget plot]
+table {%
+3.2 0.4
+4.0 0.2
+};
+\addplot [very thick, color1, forget plot]
+table {%
+4.0 0.2
+5.0 0.2
+};
+\end{axis}
+
+\end{tikzpicture}

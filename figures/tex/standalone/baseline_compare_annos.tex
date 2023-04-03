@@ -1,0 +1,88 @@
+\documentclass[]{standalone}
+
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepgfplotslibrary{dateplot}
+\pgfplotsset{compat=1.9}
+\usepackage{pgfplotstable}
+\usepgfplotslibrary{groupplots}
+  \usetikzlibrary{plotmarks}
+  \usetikzlibrary{arrows.meta}
+  \usetikzlibrary{positioning}
+\usepackage{pgfbaseimage}
+  
+\usepackage{subcaption, caption}
+\captionsetup[subfigure]{labelformat=parens, labelsep=space}
+
+\newlength\figureWidth
+\newlength\figureHeight
+
+\pgfplotsset{
+    % define the layers you need.
+    % (Don't forget to add `main' somewhere in that list!!)
+    layers/plotlayerset/.define layer set={
+        background,
+        main,
+        foreground
+    }{
+        % you could state styles here which should be moved to
+        % corresponding layers, but that is not necessary here.
+        % That is why wo don't state anything here
+    },
+    % activate the newly created layer set
+    set layers=plotlayerset,
+}
+
+\begin{document}
+\begin{figure}[t!p]
+    \centering
+    \setlength{\figureWidth}{3.1in}
+    \setlength{\figureHeight}{1.2in}
+    \input{figures/baseline_compare_annos/baseline_compare_annos}
+\end{figure}
+\end{document}
+
+% \begin{document}
+% \begin{figure}[t!p]
+%     \centering
+%     \setlength{\figureWidth}{2.0in}
+%     \setlength{\figureHeight}{1.0in}
+%     \begin{subfigure}[b]{1.1\figureWidth}
+%         \centering
+%         \input{Ch3_Contributions/sections/signal_warping_validation/figures/baseline_compare_annos/Good_Boys_anno_compare}
+%         \caption{Good Boys}
+%         \label{fig:ch3_good_boys_anno_compare}
+%     \end{subfigure}
+%     \hfill
+%     \begin{subfigure}[b]{1.1\figureWidth}
+%         \centering
+%         \input{Ch3_Contributions/sections/signal_warping_validation/figures/baseline_compare_annos/The_Hustle_anno_compare}
+%         \caption{The Hustle}
+%         \label{fig:ch3_the_hustle_anno_compare}
+%     \end{subfigure}
+%     \hfill
+%     \begin{subfigure}[b]{1.1\figureWidth}
+%         \centering
+%         \input{Ch3_Contributions/sections/signal_warping_validation/figures/baseline_compare_annos/Rambo__Last_Blood_anno_compare}
+%         \caption{Rambo: Last Blood}
+%         \label{fig:ch3_rambo_anno_compare}
+%     \end{subfigure}
+%     \\ \\
+    
+%     \begin{subfigure}[b]{1.1\figureWidth}
+%         \centering
+%         \input{Ch3_Contributions/sections/signal_warping_validation/figures/baseline_compare_annos/The_Possession_of_Hannah_Grace_anno_compare}
+%         \caption{The Possession of Hannah Grace}
+%         \label{fig:ch3_the_possession_of_hannah_grace_anno_compare}
+%     \end{subfigure}
+%     \hfill
+%     \begin{subfigure}[b]{1.1\figureWidth}
+%         \centering
+%         \input{Ch3_Contributions/sections/signal_warping_validation/figures/baseline_compare_annos/The_Peanut_Butter_Falcon_anno_compare}
+%         \caption{The Peanut Butter Falcon}
+%         \label{fig:ch3_the_peanute_butter_falcon_anno_compare}
+%     \end{subfigure}
+%     %\caption{Plots of the baseline averaged annotations and the warped annotations}
+%     %\label{fig:ch3_warped_baseline_compare}
+% \end{figure}
+% \end{document}

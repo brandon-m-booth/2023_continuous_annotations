@@ -1,0 +1,53 @@
+% This file was created by matplotlib2tikz v0.6.11.
+\begin{tikzpicture}
+
+\definecolor{color0}{RGB}{0, 78, 78}
+\definecolor{color1}{RGB}{158, 12, 41}
+\definecolor{color2}{RGB}{231, 186, 71}
+
+\begin{axis}[
+width=0.35\columnwidth,
+height=0.20\columnwidth,
+xmin=-0.044035, xmax=0.924735,
+ymin=0.149465, ymax=0.946635,
+tick align=outside,
+tick pos=left,
+x grid style={lightgray!92.02614379084967!black},
+y grid style={lightgray!92.02614379084967!black},
+scale only axis,
+scaled ticks=false,
+]
+\addplot [color0, mark=*, mark size=1.5, mark options={solid}, only marks, forget plot]
+table {%
+0.0114 0.1857
+0.0861 0.4502
+0.1721 0.5584
+0.2928 0.5857
+0.313 0.702
+0.3212 0.8338
+0.4899 0.8713
+0.8807 0.9104
+};
+\addplot [very thick, color2, forget plot]
+table {%
+0 0.192066977607036
+0.172110965022762 0.586657581953579
+};
+\addplot [very thick, color1, forget plot]
+table {%
+0.172110965022762 0.586657581953579
+0.305823904360709 0.586657581953579
+};
+\addplot [very thick, color2, forget plot]
+table {%
+0.305823904360709 0.586657581953579
+0.324749428331476 0.890850436536525
+};
+\addplot [very thick, color1, forget plot]
+table {%
+0.324749428331476 0.890850436536525
+0.8807 0.890850436536525
+};
+\end{axis}
+
+\end{tikzpicture}

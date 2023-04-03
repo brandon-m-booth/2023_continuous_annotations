@@ -2,17 +2,19 @@
 \begin{tikzpicture}
 
 \begin{axis}[
-legend cell align={left},
-legend style={fill opacity=0.8, draw opacity=1, text opacity=1, at={(0.03,0.97)}, anchor=north west, draw=white!80!black},
+%legend cell align={left},
+%legend style={fill opacity=0.8, draw opacity=1, text opacity=1, at={(0.03,0.97)}, anchor=north west, draw=white!80!black},
 tick align=outside,
 tick pos=left,
-title={Rambo\_\_Last\_Blood},
+width=\figureWidth,
+height=\figureHeight,
+%title={Rambo\_\_Last\_Blood},
 x grid style={white!69.0196078431373!black},
 xmin=-194.4, xmax=5204.4,
 xtick style={color=black},
-y grid style={white!69.0196078431373!black},
+%y grid style={white!69.0196078431373!black},
 ymin=-0.0340416666666667, ymax=1.044875,
-ytick style={color=black}
+%ytick style={color=black}
 ]
 \addplot [semithick, red, dashed]
 table {%
@@ -4934,7 +4936,7 @@ table {%
 4958 0.105453996598639
 4959 0.0957142857142857
 };
-\addlegendentry{Baseline}
+%\addlegendentry{Baseline}
 \addplot [semithick, blue]
 table {%
 51 0.397549166417091
@@ -9855,7 +9857,7 @@ table {%
 4958 0.447189777378457
 4959 0.447189777378457
 };
-\addlegendentry{Signal Warped}
+%\addlegendentry{Signal Warped}
 \end{axis}
 
 \end{tikzpicture}

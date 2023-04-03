@@ -2,17 +2,19 @@
 \begin{tikzpicture}
 
 \begin{axis}[
-legend cell align={left},
-legend style={fill opacity=0.8, draw opacity=1, text opacity=1, draw=white!80!black},
+%legend cell align={left},
+%legend style={fill opacity=0.8, draw opacity=1, text opacity=1, draw=white!80!black},
 tick align=outside,
 tick pos=left,
-title={The\_Peanut\_Butter\_Falcon},
+width=\figureWidth,
+height=\figureHeight,
+%title={The\_Peanut\_Butter\_Falcon},
 x grid style={white!69.0196078431373!black},
 xmin=-217.8, xmax=5739.8,
 xtick style={color=black},
-y grid style={white!69.0196078431373!black},
+%y grid style={white!69.0196078431373!black},
 ymin=-0.035, ymax=1.065,
-ytick style={color=black}
+%ytick style={color=black}
 ]
 \addplot [semithick, red, dashed]
 table {%
@@ -5442,7 +5444,7 @@ table {%
 5468 0.165
 5469 0.165
 };
-\addlegendentry{Baseline}
+%\addlegendentry{Baseline}
 \addplot [semithick, blue]
 table {%
 53 0.368947788759109
@@ -10871,7 +10873,7 @@ table {%
 5468 0.317934511330738
 5469 0.317934511330738
 };
-\addlegendentry{Signal Warped}
+%\addlegendentry{Signal Warped}
 \end{axis}
 
 \end{tikzpicture}

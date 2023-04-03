@@ -1,0 +1,107 @@
+% This file was created by tikzplotlib v0.9.1.
+\begin{tikzpicture}
+
+\definecolor{color0}{rgb}{0.194607843137255,0.453431372549019,0.632843137254902}
+\definecolor{color1}{rgb}{0.881862745098039,0.505392156862745,0.173039215686275}
+\definecolor{color2}{rgb}{0.229411764705882,0.570588235294118,0.229411764705882}
+\definecolor{color3}{rgb}{0.75343137254902,0.238725490196078,0.241666666666667}
+\definecolor{color4}{rgb}{0.578431372549019,0.446078431372549,0.699019607843137}
+
+\begin{axis}[
+legend cell align={left},
+legend style={fill opacity=0.8, draw opacity=1, text opacity=1, at={(0.02,1.3)}, anchor=north west, draw=white!80!black, legend columns=-1, /tikz/every even column/.append style={column sep=0.2cm}},
+tick align=outside,
+tick pos=left,
+width=0.48\textwidth,
+height=0.2\textwidth,
+%title={Movie Violence Validation},
+x grid style={white!69.0196078431373!black},
+%xlabel={Annotation},
+xmin=-0.5, xmax=1.5,
+xtick style={color=black},
+xtick={0,1},
+xticklabels={Baseline,Warped},
+y grid style={white!69.0196078431373!black},
+ylabel style={align=center},
+ylabel={Spearman\\Correlation},
+ymin=0, ymax=1,
+ytick style={color=black}
+]
+\draw[draw=none,fill=color0] (axis cs:-0.4,0) rectangle (axis cs:-0.24,nan);
+\addlegendimage{ybar,ybar legend,draw=none,fill=color0};
+\addlegendentry{min}
+
+\draw[draw=none,fill=color0] (axis cs:0.6,0) rectangle (axis cs:0.76,0.7);
+\draw[draw=none,fill=color1] (axis cs:-0.24,0) rectangle (axis cs:-0.08,0.153896752812773);
+\addlegendimage{ybar,ybar legend,draw=none,fill=color1};
+\addlegendentry{max}
+
+\draw[draw=none,fill=color1] (axis cs:0.76,0) rectangle (axis cs:0.92,0.9);
+\draw[draw=none,fill=color2] (axis cs:-0.08,0) rectangle (axis cs:0.08,0.6);
+\addlegendimage{ybar,ybar legend,draw=none,fill=color2};
+\addlegendentry{mean}
+
+\draw[draw=none,fill=color2] (axis cs:0.92,0) rectangle (axis cs:1.08,0.8);
+\draw[draw=none,fill=color3] (axis cs:0.08,0) rectangle (axis cs:0.24,0.6);
+\addlegendimage{ybar,ybar legend,draw=none,fill=color3};
+\addlegendentry{median}
+
+\draw[draw=none,fill=color3] (axis cs:1.08,0) rectangle (axis cs:1.24,0.8);
+\draw[draw=none,fill=color4] (axis cs:0.24,0) rectangle (axis cs:0.4,0.6);
+\addlegendimage{ybar,ybar legend,draw=none,fill=color4};
+\addlegendentry{sum}
+
+\draw[draw=none,fill=color4] (axis cs:1.24,0) rectangle (axis cs:1.4,0.8);
+\addplot [line width=1.08pt, white!26!black, forget plot]
+table {%
+-0.32 nan
+-0.32 nan
+};
+\addplot [line width=1.08pt, white!26!black, forget plot]
+table {%
+0.68 nan
+0.68 nan
+};
+\addplot [line width=1.08pt, white!26!black, forget plot]
+table {%
+-0.16 nan
+-0.16 nan
+};
+\addplot [line width=1.08pt, white!26!black, forget plot]
+table {%
+0.84 nan
+0.84 nan
+};
+\addplot [line width=1.08pt, white!26!black, forget plot]
+table {%
+0 nan
+0 nan
+};
+\addplot [line width=1.08pt, white!26!black, forget plot]
+table {%
+1 nan
+1 nan
+};
+\addplot [line width=1.08pt, white!26!black, forget plot]
+table {%
+0.16 nan
+0.16 nan
+};
+\addplot [line width=1.08pt, white!26!black, forget plot]
+table {%
+1.16 nan
+1.16 nan
+};
+\addplot [line width=1.08pt, white!26!black, forget plot]
+table {%
+0.32 nan
+0.32 nan
+};
+\addplot [line width=1.08pt, white!26!black, forget plot]
+table {%
+1.32 nan
+1.32 nan
+};
+\end{axis}
+
+\end{tikzpicture}
