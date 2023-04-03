@@ -13,7 +13,7 @@ from FileIO import GetCsvData, SaveCsvData
 from PrettyPlotter import pretty
 
 
-def MergeClipSignals(json_config_path):
+def MergeClipSignals(json_config_path, do_show_plots=True):
    with open(json_config_path) as config_fp:
       config = json.load(config_fp)
 
@@ -68,9 +68,26 @@ def MergeClipSignals(json_config_path):
 
       merged_df.sort_values(by='Time(sec)', inplace=True)
       merged_df.to_csv(os.path.join(config['merged_output_path'], 'warped_annotation_'+movie_name+'.csv'), index=False)
+
+      if do_show_plots:
+         plt.figure()
+         norm_merged_df = merged_df.copy()
+         norm_merged_df.iloc[:,1] = (norm_merged_df.iloc[:,1] + 100)/200.0
+         plt.plot(norm_merged_df.iloc[:,0], norm_merged_df.iloc[:,1], 'r-')
+         pretty(plt)
+         plt.xlabel('Time(s)', fontsize=24)
+         plt.ylabel('Movie Violence', fontsize=24)
+         plt.axis([norm_merged_df.iloc[0,0], norm_merged_df.iloc[-1,0],0,1])
+         plt.title(movie_name)
+
+         output_tikz_path = os.path.join(config['merged_output_path'], 'warped_annotation_'+movie_name+'.tex')
+         tikzplotlib.save(output_tikz_path)
    return
 
 def DoConstructSignal(json_config_path, do_show_plots=True):
+   if do_show_plots:
+      plt.ion()
+
    with open(json_config_path) as config_fp:
       config = json.load(config_fp)
 
@@ -194,6 +211,7 @@ def DoConstructSignal(json_config_path, do_show_plots=True):
 
       # Plot the results
       if do_show_plots:
+         plt.figure()
          for i in range(intervals_df.shape[0]):
             interval = intervals_df.iloc[i,:]
             interval_times = [average_annotation.index[interval[0]], average_annotation.index[interval[1]]]
@@ -222,12 +240,14 @@ def DoConstructSignal(json_config_path, do_show_plots=True):
          output_tikz_path = os.path.join(config['output_path'], 'warped_annotation_'+clip_data['match_name']+'.tex')
          tikzplotlib.save(output_tikz_path)
 
-         plt.show()
-
       output_signal_path = os.path.join(config['output_path'], 'warped_annotation_'+clip_data['match_name']+'.csv')
       constructed_signal.to_csv(output_signal_path, index=False, header=True)
 
-   MergeClipSignals(json_config_path)
+   MergeClipSignals(json_config_path, do_show_plots)
+
+   if do_show_plots:
+      plt.ioff()
+      plt.show()
 
 if __name__=='__main__':
    parser = argparse.ArgumentParser()

@@ -1,0 +1,38 @@
+% This file was created by tikzplotlib v0.9.1.
+\begin{tikzpicture}
+
+\definecolor{color0}{rgb}{0.12156862745098,0.466666666666667,0.705882352941177}
+\definecolor{color1}{rgb}{1,0.498039215686275,0.0549019607843137}
+
+\begin{axis}[
+legend cell align={left},
+legend style={fill opacity=0.8, draw opacity=1, text opacity=1, draw=white!80!black},
+tick align=outside,
+tick pos=left,
+title={The\_Peanut\_Butter\_Falcon},
+x grid style={white!69.0196078431373!black},
+xlabel={Batch},
+xmin=0.9, xmax=3.1,
+xtick style={color=black},
+y grid style={white!69.0196078431373!black},
+ylabel={Agreement Value},
+ymin=0.626425201884699, ymax=0.908171192892421,
+ytick style={color=black}
+]
+\addplot [semithick, color0]
+table {%
+1 0.802541723152691
+2 0.895364556937524
+3 0.81171886359505
+};
+\addlegendentry{Spearman}
+\addplot [semithick, color1]
+table {%
+1 0.639231837839596
+2 0.758100379228839
+3 0.644436949737263
+};
+\addlegendentry{Kendall's Tau}
+\end{axis}
+
+\end{tikzpicture}

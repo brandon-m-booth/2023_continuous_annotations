@@ -1,0 +1,38 @@
+% This file was created by tikzplotlib v0.9.1.
+\begin{tikzpicture}
+
+\definecolor{color0}{rgb}{0.12156862745098,0.466666666666667,0.705882352941177}
+\definecolor{color1}{rgb}{1,0.498039215686275,0.0549019607843137}
+
+\begin{axis}[
+legend cell align={left},
+legend style={fill opacity=0.8, draw opacity=1, text opacity=1, at={(0.03,0.97)}, anchor=north west, draw=white!80!black},
+tick align=outside,
+tick pos=left,
+title={The\_Hustle},
+x grid style={white!69.0196078431373!black},
+xlabel={Batch},
+xmin=0.9, xmax=3.1,
+xtick style={color=black},
+y grid style={white!69.0196078431373!black},
+ylabel={Agreement Value},
+ymin=0.54818772470948, ymax=0.943282592446403,
+ytick style={color=black}
+]
+\addplot [semithick, color0]
+table {%
+1 0.743108213950764
+2 0.784075058994378
+3 0.925323734821997
+};
+\addlegendentry{Spearman}
+\addplot [semithick, color1]
+table {%
+1 0.566146582333885
+2 0.59106537039904
+3 0.774209561184035
+};
+\addlegendentry{Kendall's Tau}
+\end{axis}
+
+\end{tikzpicture}

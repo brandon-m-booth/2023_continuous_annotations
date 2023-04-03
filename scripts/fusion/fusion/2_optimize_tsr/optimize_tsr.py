@@ -12,6 +12,7 @@ import argparse
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import tikzplotlib
 from tqdm import tqdm
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, '4_extract_const_intervals')))
@@ -38,7 +39,10 @@ def OptimizeTSR(signal_path, tsr_path, output_path, subj_id_signal_regex='(\d+)_
    subj_signal_files = {}
    # Store the signal files by subject id
    for signal_file in signal_files:
-      subject_id = re.search(subj_id_signal_regex, os.path.basename(signal_file)).group(1)
+      re_match = re.search(subj_id_signal_regex, os.path.basename(signal_file))
+      if re_match is None:
+         continue
+      subject_id = re_match.group(1)
       if subject_id not in subj_signal_files.keys():
          subj_signal_files[subject_id] = signal_file
       else:
@@ -144,6 +148,9 @@ def OptimizeTSR(signal_path, tsr_path, output_path, subj_id_signal_regex='(\d+)_
          ax[2].plot(2*[subj_tsr_error_dict[subj_id]['num_tsr_segments'][optimal_idx]], [0,1], color='black', label='')
          ax[2].set_title(subj_id + ' Agreement Plots')
          ax[2].legend()
+
+         tikz_output_file = os.path.join(output_path, subj_id+'_opt_tsr_plots.tex')
+         tikzplotlib.save(tikz_output_file)
 
    if show_plots:
       plt.ioff()

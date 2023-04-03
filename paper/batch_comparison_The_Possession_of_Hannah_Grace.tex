@@ -1,0 +1,38 @@
+% This file was created by tikzplotlib v0.9.1.
+\begin{tikzpicture}
+
+\definecolor{color0}{rgb}{0.12156862745098,0.466666666666667,0.705882352941177}
+\definecolor{color1}{rgb}{1,0.498039215686275,0.0549019607843137}
+
+\begin{axis}[
+legend cell align={left},
+legend style={fill opacity=0.8, draw opacity=1, text opacity=1, at={(0.03,0.97)}, anchor=north west, draw=white!80!black},
+tick align=outside,
+tick pos=left,
+title={The\_Possession\_of\_Hannah\_Grace},
+x grid style={white!69.0196078431373!black},
+xlabel={Batch},
+xmin=0.9, xmax=3.1,
+xtick style={color=black},
+y grid style={white!69.0196078431373!black},
+ylabel={Agreement Value},
+ymin=0.631826961276547, ymax=0.950239956910367,
+ytick style={color=black}
+]
+\addplot [semithick, color0]
+table {%
+1 0.828253686184527
+2 0.935766638927012
+3 0.923270407250557
+};
+\addlegendentry{Spearman}
+\addplot [semithick, color1]
+table {%
+1 0.646300279259903
+2 0.791672725195751
+3 0.777468469973209
+};
+\addlegendentry{Kendall's Tau}
+\end{axis}
+
+\end{tikzpicture}

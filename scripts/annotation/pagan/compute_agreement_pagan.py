@@ -3,6 +3,7 @@ import sys
 import glob
 import pickle
 import argparse
+import tikzplotlib
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -223,24 +224,29 @@ def ComputePaganAgreement(input_file_path, output_path, do_show_plots=False):
          cronbachs_alpha_accum_norm_diff = agree.CronbachsAlphaCorr(accum_norm_diff_df)
 
          # ICC(2,1)
-         icc_df = agree.ICC(combined_anno_df)
-         icc21_df = icc_df.loc[icc_df['type'] == 'ICC2',:]
-         icc21 = icc21_df['ICC'].iloc[0]
+         #icc_df = agree.ICC(combined_anno_df)
+         #icc21_df = icc_df.loc[icc_df['type'] == 'ICC2',:]
+         #icc21 = icc21_df['ICC'].iloc[0]
+         icc21 = 0.5
 
          # SAGR (signed agreement)
          # BB - Doesn't make sense for scales where zero isn't the center
 
          # Krippendorff's alpha
-         krippendorffs_alpha = agree.KrippendorffsAlpha(combined_anno_df)
+         #krippendorffs_alpha = agree.KrippendorffsAlpha(combined_anno_df)
 
          # Krippendorff's alpha of normed diff
-         krippendorffs_alpha_norm_diff = agree.KrippendorffsAlpha(norm_diff_df)
+         #krippendorffs_alpha_norm_diff = agree.KrippendorffsAlpha(norm_diff_df)
 
          # Krippendorff's alpha of abs normed diff
-         krippendorffs_alpha_abs_norm_diff = agree.KrippendorffsAlpha(abs_norm_diff_df)
+         #krippendorffs_alpha_abs_norm_diff = agree.KrippendorffsAlpha(abs_norm_diff_df)
 
          # Accumulated Normed Rank-based Krippendorff's Alpha
-         krippendorffs_alpha_accum_norm_diff = agree.KrippendorffsAlpha(accum_norm_diff_df)
+         #krippendorffs_alpha_accum_norm_diff = agree.KrippendorffsAlpha(accum_norm_diff_df)
+         krippendorffs_alpha = 1.0
+         krippendorffs_alpha_norm_diff = 1.0
+         krippendorffs_alpha_abs_norm_diff = 1.0
+         krippendorffs_alpha_accum_norm_diff = 1.0
 
          ###############
 
@@ -618,6 +624,10 @@ def ComputePaganAgreement(input_file_path, output_path, do_show_plots=False):
             fig_corr.suptitle(project_entry_name+' Agreement Measures')
             fig_agg.suptitle(project_entry_name+' Agglomerative Clustering of Agreement')
             fig_spec.suptitle(project_entry_name+' Spectral Clustering of Agreement')
+
+            tikz_output_file = os.path.join(output_path, project_entry_name+'_raw_annotations.tex')
+            tikzplotlib.save(tikz_output_file, figure=fig_anno)
+
             plt.show()
    return
 
