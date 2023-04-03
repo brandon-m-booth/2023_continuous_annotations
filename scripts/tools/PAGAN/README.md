@@ -1,5 +1,7 @@
 # PAGAN [Platform for Audiovisual General-purpose Annotation]
 
+This code is a copy of an earlier version of the PAGAN annotation tool from David Melhart.  The code is available on GitHub here: [https://github.com/davidmelhart/PAGAN](https://github.com/davidmelhart/PAGAN)
+
 You can find the app hosted by the Institute of Digital Games at [pagan.institutedigitalgames.com/](http://pagan.institutedigitalgames.com/).
 
 This repository contains the sourcefiles to set up your own server and use both YouTube videos and uploaded videos for gathering annotations.
