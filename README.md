@@ -1,7 +1,7 @@
 # Robust Ground Truth from Continuous Annotations
 This repository provides the figures, code, and results for the submitted publication:
 
-Brandon M. Booth, Shri S. Narayanan. "People Make Mistakes: Obtaining Accurate Ground Truth from Continuous Annotations of Subjective Constructs." Transactions on Affective Computing, 2023. [under review]
+Brandon M. Booth, Shri S. Narayanan. "People Make Mistakes: Obtaining Accurate Ground Truth from Continuous Annotations of Subjective Constructs." Human Behavior and Emerging Technologies, 2023. [under review]
 
 ## Directories
 1. *figures* - Contains TeX (tikz), PNG, and [draw.io](https://app.diagrams.net/) formatted files used to generate figures in the paper
