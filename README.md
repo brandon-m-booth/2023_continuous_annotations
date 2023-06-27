@@ -3,6 +3,10 @@ This repository provides the figures, code, and results for the submitted public
 
 Brandon M. Booth, Shri S. Narayanan. "People Make Mistakes: Obtaining Accurate Ground Truth from Continuous Annotations of Subjective Constructs." Behavior Research Methods, 2023. [under review]
 
+Here is the version of the code and data in this repository released with the paper:
+
+[![DOI](https://zenodo.org/badge/210796946.svg)](https://zenodo.org/badge/latestdoi/210796946)
+
 ## Directories
 1. *figures* - Contains TeX (tikz), PNG, and [draw.io](https://app.diagrams.net/) formatted files used to generate figures in the paper
 1. *results* - Holds annotation results in two pilot studies (pilot1, pilot2) and the main experiment (study), including annotations, ordinal comparisons, and all intermediate results at various stages of ground truth pipeline processing
