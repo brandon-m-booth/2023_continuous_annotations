@@ -1,6 +1,5 @@
 import os
 import dtw
-import pdb
 import numpy as np
 import pandas as pd
 import tempfile
@@ -11,7 +10,7 @@ from sklearn.metrics import cohen_kappa_score
 from datetime import datetime
 import pytz
 
-# Compute the DTW for each column (signal) in the data frame with resepct to the reference
+# Compute the DTW for each column (signal) in the data frame with respect to the reference
 def DTWReference(df, reference_df, max_warp_distance=None):
    window_type = None
    window_args = {}

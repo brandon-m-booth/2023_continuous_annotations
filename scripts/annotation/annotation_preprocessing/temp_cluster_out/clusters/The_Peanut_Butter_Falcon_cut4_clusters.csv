@@ -1,0 +1,11 @@
+,Pearson Agglomerative,Spearman Agglomerative,Kendall's Tau Agglomerative,CCC Agglomerative,MSE Agglomerative,Cohen's Kappa Norm Diff Agglomerative,Cohen's Kappa Abs Norm Diff Agglomerative,SDA Agglomerative,ASDA Agglomerative,Pearson Spectral,Spearman Spectral,Kendall's Tau Spectral,CCC Spectral,MSE Spectral,Cohen's Kappa Norm Diff Spectral,Cohen's Kappa Abs Norm Diff Spectral,SDA Spectral,ASDA Spectral,DTW Pearson Agglomerative,DTW Spearman Agglomerative,DTW Kendall's Tau Agglomerative,DTW CCC Agglomerative,DTW MSE Agglomerative,DTW Cohen's Kappa Norm Diff Agglomerative,DTW Cohen's Kappa Abs Norm Diff Agglomerative,DTW SDA Agglomerative,DTW ASDA Agglomerative,DTW Pearson Spectral,DTW Spearman Spectral,DTW Kendall's Tau Spectral,DTW CCC Spectral,DTW MSE Spectral,DTW Cohen's Kappa Norm Diff Spectral,DTW Cohen's Kappa Abs Norm Diff Spectral,DTW SDA Spectral,DTW ASDA Spectral
+AJSW1J6VE37BL,1,1,1,1,0,1,1,1,1,0,0,0,0,1,1,1,1,1,0,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1
+AQD91RFHV1WNE,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,0,1,1,1,0,1,1,1,1,1,0,0,0,0,1,1,1,1
+A11W9XU1ESKSA,1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,0,0,1,1,1,1,0,1,1,1,1,1,1,1,0,0,1,1,1,1
+A3TDR6MXS6UO5,1,1,1,1,0,1,1,1,1,0,0,0,0,1,1,1,1,1,0,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1
+A2LO2DX6H49IK,1,1,1,0,1,1,1,0,0,0,1,1,0,0,1,1,1,1,0,1,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0
+A3SLISG1IED7T,1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,0,0,1,1,1,1
+A1CAM1A9B1QR2,1,1,1,1,1,0,1,1,1,0,1,1,0,0,0,0,1,1,0,1,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0
+AN26GE0GN8DP0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,0,1,1,1,1,0,0,0,0,0,1,1,1,1,0,0,0,0
+A1R09GS9W47R5,1,1,1,1,0,0,1,1,1,0,0,0,1,1,0,0,1,1,0,1,1,1,1,0,0,0,0,0,0,0,1,1,0,0,0,0
+A2KHL16YV7AIW,0,0,0,1,1,1,0,1,1,1,1,1,0,0,1,1,1,1,1,0,0,1,0,0,0,0,0,1,1,1,0,0,0,0,0,0

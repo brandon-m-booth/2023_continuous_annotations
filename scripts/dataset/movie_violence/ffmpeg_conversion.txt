@@ -1,1 +1,0 @@
-ffmpeg -i movies/Good_Boys_cut3.mp4 -c:v libx264 -crf 23 -c:a libvo_aacenc -ac 2 -movflags faststart movies2/Good_Boys_cut3.mp4

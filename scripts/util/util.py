@@ -1,10 +1,17 @@
-import pdb
 import cvxopt
 import numpy as np
 import pandas as pd
 
 zero_slope_tol = 1e-7
 zero_value_tol = 1e-10
+
+# Workaround for matplotlib 3.6 renamed legend's _ncol to _ncols, which breaks tikzplotlib
+# See: https://github.com/nschloe/tikzplotlib/issues/557
+def TikzplotlibFixNCols(obj):
+    if hasattr(obj, "_ncols"):
+        obj._ncol = obj._ncols
+    for child in obj.get_children():
+        TikzplotlibFixNCols(child)
 
 def GetUpperTri(corr_mat):
    m = corr_mat.shape[0]
