@@ -11,9 +11,10 @@
 \definecolor{color7}{rgb}{0.737254901960784,0.741176470588235,0.133333333333333}
 \definecolor{color8}{rgb}{0.0901960784313725,0.745098039215686,0.811764705882353}
 
+\tikzstyle{every node}=[font=\small]
 \pgfplotsset{
-    width=0.5\textwidth,
-    height=0.18\textwidth
+    width=0.45\textwidth,
+    height=0.19\textwidth
 }
 
 \begin{axis}[
@@ -25,12 +26,14 @@ tick pos=left,
 x grid style={white!69.0196078431373!black},
 xmin=-10000.0, xmax=650000.0,
 xtick style={color=black},
+x label style={at={(current axis.right of origin)}, below=.8em},
 y grid style={white!69.0196078431373!black},
 ytick style={color=black},
 unbounded coords=jump,
 scaled x ticks={real:1000},
 %scaled y ticks={real:200},
 xtick scale label code/.code={},
+xtick={0,100000,200000,300000,400000,500000},
 xlabel={Time (s)},
 ylabel={Violence},
 y filter/.code=\pgfmathparse{\pgfmathresult/200 + 0.5},

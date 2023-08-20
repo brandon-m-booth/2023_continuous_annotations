@@ -1,0 +1,41 @@
+\documentclass[]{standalone}
+
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepgfplotslibrary{dateplot}
+\pgfplotsset{compat=1.9}
+\usepackage{pgfplotstable}
+\usepgfplotslibrary{groupplots}
+  \usetikzlibrary{plotmarks}
+  \usetikzlibrary{arrows.meta}
+  \usetikzlibrary{positioning}
+\usepackage{pgfbaseimage}
+  
+\usepackage{subcaption, caption}
+\captionsetup[subfigure]{labelformat=parens, labelsep=space}
+
+\newlength\figureWidth
+
+\pgfplotsset{
+    % define the layers you need.
+    % (Don't forget to add `main' somewhere in that list!!)
+    layers/plotlayerset/.define layer set={
+        background,
+        main,
+        foreground
+    }{
+        % you could state styles here which should be moved to
+        % corresponding layers, but that is not necessary here.
+        % That is why wo don't state anything here
+    },
+    % activate the newly created layer set
+    set layers=plotlayerset,
+}
+
+\begin{document}
+\begin{figure}[t!p]
+    \centering
+    \setlength{\figureWidth}{3.5in}
+    \input{figures/simulated_annotations/sim_annos}
+\end{figure}
+\end{document}
