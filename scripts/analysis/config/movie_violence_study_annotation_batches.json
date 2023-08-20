@@ -1,23 +1,23 @@
 {
-   "tikz_out_path": "/media/brandon/SailData/2019_Continuous_Annotations/paper/",
+   "tikz_out_path": "../../figures/tex",
    "movie_name_regex": "warped_annotation_(.*).csv",
    "batch_data":
    [
       {
          "name": "Batch1",
-         "annos_path": "/media/brandon/SailData/2019_Continuous_Annotations/results/movie_violence_annotation/study/warped_annotations/pair_batches/batch1/pairs_merged/"
+         "annos_path": "../../results/main_study/warped_annotations/pair_batches/batch1/pairs_merged/"
       },
       {
          "name": "Batch2",
-         "annos_path": "/media/brandon/SailData/2019_Continuous_Annotations/results/movie_violence_annotation/study/warped_annotations/pair_batches/batch2/pairs_merged/"
+         "annos_path": "../../results/main_study/warped_annotations/pair_batches/batch2/pairs_merged/"
       },
       {
          "name": "Batch3",
-         "annos_path": "/media/brandon/SailData/2019_Continuous_Annotations/results/movie_violence_annotation/study/warped_annotations/pair_batches/batch3/pairs_merged/"
+         "annos_path": "../../results/main_study/warped_annotations/pair_batches/batch3/pairs_merged/"
       },
       {
          "name": "Batch4",
-         "annos_path": "/media/brandon/SailData/2019_Continuous_Annotations/results/movie_violence_annotation/study/warped_annotations/pair_batches/batch4/pairs_merged/"
+         "annos_path": "../../results/main_study/warped_annotations/pair_batches/batch4/pairs_merged/"
       }
    ]
 }

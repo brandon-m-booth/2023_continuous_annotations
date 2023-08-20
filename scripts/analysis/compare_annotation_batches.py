@@ -10,8 +10,9 @@ import seaborn as sns
 import tikzplotlib
 import matplotlib.pyplot as plt
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir, 'util')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, 'util')))
 import agreement_metrics as agree
+from util import TikzplotlibFixNCols
 
 def CompareAnnotationBatches(json_config_path):
    with open(json_config_path) as config_fp:
@@ -49,7 +50,7 @@ def CompareAnnotationBatches(json_config_path):
       print("  Kendall\'s Tau: "+str(kendall_taus))
 
       batches = range(1,len(spearman_corrs)+1)
-      plt.figure()
+      fig = plt.figure()
       plt.plot(batches, spearman_corrs, label='Spearman')
       plt.plot(batches, kendall_taus, label='Kendall\'s Tau')
       plt.legend()
@@ -57,8 +58,12 @@ def CompareAnnotationBatches(json_config_path):
       plt.ylabel('Agreement Value')
       plt.title(movie_name)
 
+      if not os.path.exists(config['tikz_out_path']):
+         os.makedirs(config['tikz_out_path'])
+
+      TikzplotlibFixNCols(fig)
       tikz_out_file_path = os.path.join(config['tikz_out_path'], 'batch_comparison_'+movie_name+'.tex')
-      tikzplotlib.save(tikz_out_file_path)
+      tikzplotlib.save(tikz_out_file_path, figure=fig)
 
       plt.show()
    return

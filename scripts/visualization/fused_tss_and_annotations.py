@@ -21,13 +21,14 @@ from multiprocessing import Pool
 # TSS encoding constant variables
 CONST_VAL = 0
 
-def VisualizeFusedTSSAndAnnotations(annotations_folder, fused_tss_file_path, tikz_file_out_path=None):
+def VisualizeFusedTSSAndAnnotations(annotations_folder, fused_tss_file_path, file_name_filter_str='', tikz_file_out_path=None):
    # Load the annotations
    annotations = {}
    anno_files = glob.glob(os.path.join(annotations_folder, '*.csv'))
    for anno_file in anno_files:
-      df = pd.read_csv(anno_file)
-      annotations[os.path.basename(anno_file)] = df
+      if file_name_filter_str == '' or file_name_filter_str in os.path.basename(anno_file):
+          df = pd.read_csv(anno_file)
+          annotations[os.path.basename(anno_file)] = df
 
    # Load the fused TSS
    fused_tss = pd.read_csv(fused_tss_file_path)
@@ -57,10 +58,11 @@ if __name__ == '__main__':
    parser = argparse.ArgumentParser()
    parser.add_argument('--annotations_path', dest='annotations_path', required=True, help='Path to folder containing annotations')
    parser.add_argument('--fused_tss_path', dest='fused_tss_path', required=True, help='Path to file containing the fused TSS for the annotations')
+   parser.add_argument('--file_name_filter_str', required=False, type=str, default='', help='A substring used to filter the view of files living in the annotations_path.  Only files containing this substring will be used during execution')
    parser.add_argument('--tikz', dest='tikz', required=False, help='Output path for TikZ PGF plot code')
    try:
       args = parser.parse_args()
    except:
       parser.print_help()
       sys.exit(0)
-   VisualizeFusedTSSAndAnnotations(args.annotations_path, args.fused_tss_path, args.tikz)
+   VisualizeFusedTSSAndAnnotations(args.annotations_path, args.fused_tss_path, args.file_name_filter_str, args.tikz)

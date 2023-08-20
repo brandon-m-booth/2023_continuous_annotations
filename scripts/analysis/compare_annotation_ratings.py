@@ -10,8 +10,9 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir, 'util')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, 'util')))
 import agreement_metrics as agree
+from util import TikzplotlibFixNCols
 
 functionals = [np.nanmin, np.nanmax, np.nanmean, np.nanmedian, np.nansum]
 
@@ -112,13 +113,15 @@ def CompareAnnotationRatings(baseline_annos_folder_path, warped_annos_folder_pat
    # TODO - multi bar plot with each metrics grouped and each group having many functionals
    #plt.bar([pearson,spearman,ccc,kappa,alpha,icc])
    #ax = sns.barplot(x="Metric", y="Correlation", hue="Functional", data=sns_corr_df)
+   fig = plt.figure()
    ax = sns.barplot(x="Annotation", y="Correlation", hue="Functional", data=sns_corr_df[sns_corr_df['Metric'] == 'Spearman'])
    #plt.xlabel(['Pearson','Spearman','CCC','Kappa','Alpha','ICC'])
    #plt.ylabel('Correlation, CSM vs. ratings')
    plt.title('Movie Violence Validation')
 
+   TikzplotlibFixNCols(fig)
    output_tikz_path = os.path.join(output_folder, 'csm_annotation_comparison.tex')
-   tikzplotlib.save(output_tikz_path)
+   tikzplotlib.save(output_tikz_path, figure=fig)
 
    plt.show()
 
