@@ -11,7 +11,7 @@ Brandon M. Booth, Shri S. Narayanan. "People Make Mistakes: Obtaining Accurate G
 
 Here is the version of the code and data in this repository released with the paper:
 
-[![DOI](https://zenodo.org/badge/210796946.svg)](https://zenodo.org/badge/latestdoi/210796946)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8267577.svg)](https://doi.org/10.5281/zenodo.8267577)
 
 If you find this code helpful or have questions or feedback, please reach out to me at: brandon.m.booth@gmail.com.  I aim to make this code more accessible and convenient in future iterations.
 
