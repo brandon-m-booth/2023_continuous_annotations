@@ -148,7 +148,7 @@ def KrippendorffsAlpha(df):
    temp_df = os.path.join(tempfile.gettempdir(), 'temp_df.csv')
    results_path = os.path.join(tempfile.gettempdir(), 'krippendorffs_alpha_results.csv')
    df.to_csv(temp_df, index=False, header=True)
-   os.system("Rscript "+os.path.join(dir_path, 'krippendorffs_alpha_helper.R')+ " -i "+temp_df+" -m nominal"+" -o "+results_path)
+   os.system("Rscript \""+os.path.join(dir_path, 'krippendorffs_alpha_helper.R')+ "\" -i \""+temp_df+"\" -m nominal"+" -o \""+results_path+"\"")
    alpha_df = pd.read_csv(results_path)
    return alpha_df.values[0,0]
    #return krippendorff.alpha(df.values.T)
@@ -158,9 +158,14 @@ def ICC(df):
    temp_df = os.path.join(tempfile.gettempdir(), 'temp_df.csv')
    results_path = os.path.join(tempfile.gettempdir(), 'icc_results.csv')
    df.to_csv(temp_df, index=False, header=True)
-   os.system("Rscript "+os.path.join(dir_path, 'icc_helper.R')+ " -i "+temp_df+" -o "+results_path)
+   os.system("Rscript \""+os.path.join(dir_path, 'icc_helper.R')+ "\" -i \""+temp_df+"\" -o \""+results_path+"\"")
    icc_df = pd.read_csv(results_path, index_col=0, header=0)
    return icc_df
+
+def SDAFromRatings(df):
+   diff_df = df.diff().iloc[1:,:]
+   norm_diff_df = pd.DataFrame(data=np.sign(diff_df.values), columns=df.columns)
+   return SDA(norm_diff_df)
 
 def SDA(norm_diff_df):
    norm_delta = lambda x,y: 2*np.sum((x-y) == 0)/float(len(x)) - 1.0
