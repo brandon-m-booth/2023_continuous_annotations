@@ -1,0 +1,45 @@
+services:
+  web:
+    build:
+      context: ./scripts/annotation/annotation_collection/PAGAN
+    container_name: web
+    ports:
+      - "3148:80"
+    depends_on:
+      - mysql
+    networks:
+      - app-network
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: cubesat
+      MYSQL_DATABASE: pagan
+      MYSQL_USER: pagan_sys
+      MYSQL_PASSWORD: pagan_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - .scripts/annotation/annotation_collection/PAGAN/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app-network
+
+  analysis:
+    build:
+      context: ./
+    container_name: analysis
+    depends_on:
+      - mysql
+    volumes:
+      - db_data:/data/mysql
+    networks:
+      - app-network
+
+volumes:
+  db_data:
+
+networks:
+  app-network:

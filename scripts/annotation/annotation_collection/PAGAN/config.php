@@ -1,10 +1,10 @@
 <?php
 /* Database credentials. Assuming you are running MySQL
 server with default setting (user 'root' with no password) */
-define('DB_SERVER', 'localhost');
-define('DB_USERNAME', 'bbooth');
-define('DB_PASSWORD', 'UDk6#w3kP44W9rVn');
-define('DB_NAME', 'movie_violence_annotation');
+define('DB_SERVER', 'mysql');
+define('DB_USERNAME', 'pagan_sys');
+define('DB_PASSWORD', 'pagan_password');
+define('DB_NAME', 'pagan');
  
 /* Attempt to connect to MySQL database */
 try{
