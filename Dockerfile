@@ -14,8 +14,7 @@ COPY ./LICENSE ./LICENSE
 ### OS updates
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update
-RUN apt-get install -y wget
-RUN apt-get install bzip2
+RUN apt-get install -y wget bzip2
 
 ### Install Anaconda
 RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
@@ -29,7 +28,7 @@ RUN conda update --all -y
 
 ### CUBES Annotation Tool Setup
 # Python install
-RUN conda install -c conda-forge python=3.13.5
+RUN conda install -c conda-forge python=3.11
 RUN pip install -r requirements.txt
 
 # Rscript install
