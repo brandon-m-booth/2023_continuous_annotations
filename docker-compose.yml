@@ -27,16 +27,16 @@ services:
     networks:
       - app-network
 
-  analysis:
-    build:
-      context: ./
-    container_name: analysis
-    depends_on:
-      - mysql
-    volumes:
-      - db_data:/data/mysql
-    networks:
-      - app-network
+#  analysis:
+#    build:
+#      context: ./
+#    container_name: analysis
+#    depends_on:
+#      - mysql
+#    volumes:
+#      - db_data:/data/mysql
+#    networks:
+#      - app-network
 
 volumes:
   db_data:
