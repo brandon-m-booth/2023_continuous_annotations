@@ -1,7 +1,7 @@
 <?php
 $title = 'Platform for Affective Game ANnotation';
 $css = ['upload.css', 'forms.css'];
-include("header.php");
+include("base.php");
 
 // Initialize the session
 session_start();
@@ -239,7 +239,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     // Close connection
     unset($pdo);
 }
-
+include("header.php");
 ?>
 
 <?php if(!isset($_COOKIE['seen_notice'])) {

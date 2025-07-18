@@ -5,7 +5,7 @@
     if (!empty($_GET['test_mode'])){
         $test_mode = 1;
     }
-    include("header.php");
+    include("base.php");
 
     require_once "config.php";
     $project_name = $target = $type = $session_id = "";
@@ -148,6 +148,7 @@
             unset($pdo);
         }
     }
+    include("header.php");
 ?>
 
 <?php 

@@ -1,10 +1,11 @@
 <?php
-$title = 'Platform for Affective Game ANnotation';
-$css = ['researcher.css', 'forms.css'];
-include("header.php");
-
 // Initialize the session
 session_start();
+
+$title = 'Platform for Affective Game ANnotation';
+$css = ['researcher.css', 'forms.css'];
+include("base.php");
+include("header.php");
  
 // Include config file
 require_once "config.php";

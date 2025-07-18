@@ -1,10 +1,10 @@
 <?php
-$title = 'Platform for Affective Game ANnotation';
-$css = ['researcher.css'];
-include("header.php");
-
 // Initialize the session
 session_start();
+
+$title = 'Platform for Affective Game ANnotation';
+$css = ['researcher.css'];
+include("base.php");
  
 // Check if the user is logged in, if not then redirect him to login page
 if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
@@ -28,7 +28,7 @@ if($_SERVER["REQUEST_METHOD"] == "GET"){
     $length_stmt->bindParam(":archived", $archived, PDO::PARAM_STR);
     $length_stmt->execute();
 }
-
+include("header.php");
 ?>
     <div id="subheader">
         <h2>[Platform for Audiovisual General-purpose ANotation]</h2>
@@ -66,7 +66,7 @@ if($_SERVER["REQUEST_METHOD"] == "GET"){
                                     <div>
                                         <h2>'.$row['project_name'].'</h2>
                                         <h3>a <span class="project-info">project<span class="project-info-box">
-                                                    <p><strong>annotation type:</strong> '.$rosw['type'].'</p>
+                                                    <p><strong>annotation type:</strong> '.$row['type'].'</p>
                                                     <p><strong>source type:</strong> '.$row['source_type'].'</p>
                                                     <p><strong>video loading:</strong> '.$row['video_loading'].'</p>
                                                     <p><strong>endless mode:</strong> '.$row['endless'].'</p>

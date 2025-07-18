@@ -1,10 +1,10 @@
 <?php
-$title = 'Platform for Affective Game ANnotation';
-$css = ['forms.css'];
-include("header.php");
-
 // Initialize the session
 session_start();
+
+$title = 'Platform for Affective Game ANnotation';
+$css = ['forms.css'];
+include("base.php");
 
 // Include config file
 require_once "config.php";
@@ -27,6 +27,7 @@ if($_SERVER["REQUEST_METHOD"] == "GET"){
 	unset($pdo);
 }
 
+include("header.php");
 ?>
     <div id="end-messages">
         <div>

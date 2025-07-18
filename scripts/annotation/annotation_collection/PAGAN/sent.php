@@ -1,17 +1,18 @@
 <?php
-$title = 'Platform for Affective Game ANnotation';
-$css = ['researcher.css', 'forms.css'];
-include("header.php");
-
 // Initialize the session
 session_start();
- 
+
+$title = 'Platform for Affective Game ANnotation';
+$css = ['researcher.css', 'forms.css'];
+include("base.php");
+
 // Check if the user is already logged in, if yes then redirect him to welcome page
 if(isset($_SESSION["loggedin"]) && $_SESSION["loggedin"] === true){
     header("location: projects.php");
     exit;
 }
- 
+include("header.php");
+
 // Include config file
 require_once "config.php";
 ?>

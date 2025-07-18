@@ -1,10 +1,10 @@
 <?php
-$title = 'Platform for Affective Game ANnotation';
-$css = ['researcher.css', 'forms.css'];
-include("header.php");
-
 // Initialize the session
 session_start();
+
+$title = 'Platform for Affective Game ANnotation';
+$css = ['researcher.css', 'forms.css'];
+include("base.php");
 
 // Include config file
 require_once "config.php";
@@ -37,6 +37,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     header("location: annotation.php?id=".$project_id."&test_mode=true&title=".$project_name."&target=".$target."&type=".$type."&sound=".$sound."&source_type=".$source_type."&source=".$source_url."&video_loading=".$video_loading);
     exit();
 }
+include("header.php");
 ?>
     <div id="subheader">
         <h2>[Platform for Audiovisual General-purpose ANotation]</h2>

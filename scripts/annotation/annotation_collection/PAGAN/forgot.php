@@ -1,10 +1,10 @@
 <?php
-$title = 'Platform for Affective Game ANnotation';
-$css = ['researcher.css', 'forms.css'];
-include("header.php");
-
 // Initialize the session
 session_start();
+
+$title = 'Platform for Affective Game ANnotation';
+$css = ['researcher.css', 'forms.css'];
+include("base.php");
  
 // Check if the user is logged in, otherwise redirect to login page
 if(isset($_SESSION["loggedin"]) && $_SESSION["loggedin"] === true){
@@ -111,6 +111,7 @@ http://www.institutedigitalgames.com/";
     // Close connection
     unset($pdo);
 }
+include("header.php");
 ?>
  
     <div id="subheader">

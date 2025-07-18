@@ -1,10 +1,11 @@
 ﻿<?php
-$title = 'Platform for Affective Game ANnotation';
-include("header.php");
-
 // Initialize the session
 session_start();
- 
+
+$title = 'Platform for Affective Game ANnotation';
+include("base.php");
+include("header.php");
+
 // Include config file
 require_once "config.php";
 ?>

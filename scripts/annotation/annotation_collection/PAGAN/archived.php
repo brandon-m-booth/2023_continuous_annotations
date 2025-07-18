@@ -1,11 +1,11 @@
 <?php
-$title = 'Platform for Affective Game ANnotation';
-$css = ['researcher.css'];
-include("header.php");
-
 // Initialize the session
 session_start();
- 
+
+$title = 'Platform for Affective Game ANnotation';
+$css = ['researcher.css'];
+include("base.php");
+
 // Check if the user is logged in, if not then redirect him to login page
 if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
     header("location: login.php");
@@ -29,6 +29,7 @@ if($_SERVER["REQUEST_METHOD"] == "GET"){
     $length_stmt->execute();
 }
 
+include("header.php");
 ?>
     <div id="subheader">
         <h2>[Platform for Audiovisual General-purpose ANotation]</h2>
