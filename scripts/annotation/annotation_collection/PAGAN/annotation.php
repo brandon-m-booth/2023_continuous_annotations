@@ -6,6 +6,10 @@
         $test_mode = 1;
     }
     include("base.php");
+    if (!isset($_COOKIE['seen_notice'])) {
+        setcookie('seen_notice', 'seen', strtotime('+365 days'), '/', $_SERVER['HTTP_HOST']);
+    }
+    include header.php;
 
     require_once "config.php";
     $project_name = $target = $type = $session_id = "";
@@ -164,9 +168,7 @@
             <button>Alright, I understand</button>
         </div>
         <div id='cookie_wall'></div>";
-        if (!isset($_COOKIE['seen_notice'])) {
-        setcookie('seen_notice', 'seen', strtotime('+365 days'), '/', $_SERVER['HTTP_HOST']);
-        } 
+       
     }
     if ($test_mode > 0) {
         echo "<div class='subheader-buttons'><a class='button' href='./test.php'>go back</a></div>";
