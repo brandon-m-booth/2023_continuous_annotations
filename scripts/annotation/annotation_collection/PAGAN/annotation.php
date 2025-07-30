@@ -24,15 +24,15 @@
     $project_name = $project_id = $target = $type = $source_type = $video_loading = $n_of_entries = $n_of_participant_runs = $source = $sequence_n = $endless = $sound = $message = "";
 
     if($_SERVER["REQUEST_METHOD"] == "GET"){
-        $project_id = htmlspecialchars($_GET['id'], ENT_QUOTES, "UTF-8");
+        $project_id = isset($_GET['project_name']) ? htmlspecialchars($_GET['id'], ENT_QUOTES, "UTF-8"):'';
         if ($test_mode > 0) {
-            $project_name = htmlspecialchars($_GET['project_name'], ENT_QUOTES, "UTF-8");
-            $target = htmlspecialchars($_GET['target'], ENT_QUOTES, "UTF-8");
-            $type = htmlspecialchars($_GET['type'], ENT_QUOTES, "UTF-8");
-            $sound = htmlspecialchars($_GET['sound'], ENT_QUOTES, "UTF-8");
-            $source_type = htmlspecialchars($_GET['source_type'], ENT_QUOTES, "UTF-8");
-            $video_loading = htmlspecialchars($_GET['video_loading'], ENT_QUOTES, "UTF-8");
-            $source_url = htmlspecialchars($_GET['source'], ENT_QUOTES, "UTF-8");
+            $project_name = isset($_GET['project_name']) ? htmlspecialchars($_GET['project_name'], ENT_QUOTES, "UTF-8"):'';
+            $target = isset($_GET['target']) ? htmlspecialchars($_GET['target'], ENT_QUOTES, "UTF-8"):'';
+            $type = isset($_GET['type']) ? htmlspecialchars($_GET['type'], ENT_QUOTES, "UTF-8"):'';
+            $sound = isset($_GET['sound']) ? htmlspecialchars($_GET['sound'], ENT_QUOTES, "UTF-8"):'';
+            $source_type = isset($_GET['source_type']) ? htmlspecialchars($_GET['source_type'], ENT_QUOTES, "UTF-8"):'';
+            $video_loading = isset($_GET['video_loading']) ? htmlspecialchars($_GET['video_loading'], ENT_QUOTES, "UTF-8"):'';
+            $source_url = isset($_GET['source']) ? htmlspecialchars($_GET['source'], ENT_QUOTES, "UTF-8"):'';
             $source = array('source_url' => "https://www.youtube.com/watch?v=".$source_url);
             $source_type = "youtube";
             $video_loading = "random";
@@ -40,7 +40,7 @@
             $n_of_entries = 1;
             $n_of_participant_runs = 1;
         } else {
-            $entry_id = htmlspecialchars($_GET['entry'], ENT_QUOTES, "UTF-8");
+            $entry_id = isset($_GET['entry']) ? htmlspecialchars($_GET['entry'], ENT_QUOTES, "UTF-8"):'';
             $sql = "SELECT * FROM projects WHERE project_id = :project_id LIMIT 1";
             $stmt = $pdo->prepare($sql);
             $stmt->bindParam(":project_id", $project_id, PDO::PARAM_STR);
@@ -164,8 +164,10 @@
             <button>Alright, I understand</button>
         </div>
         <div id='cookie_wall'></div>";
+        if (!isset($_COOKIE['seen_notice'])) {
         setcookie('seen_notice', 'seen', strtotime('+365 days'), '/', $_SERVER['HTTP_HOST']);
         } 
+    }
     if ($test_mode > 0) {
         echo "<div class='subheader-buttons'><a class='button' href='./test.php'>go back</a></div>";
     }

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Annotation Simulation</title>
+</head>
+<body>
+    <h2>Annotation Recorder</h2>
+    <button id="startBtn">Start Annotation</button>
+    <button id="stopBtn">Stop Annotation</button>
+    <p id="status"></p>
+    <p id="storedCount">Loading...</p>
+    <button id="uploadBtn">Upload Annotations</button>
+    <p id="uploadStatus"></p>
+
+    <script>
+        let annotations = [];
+        let interval = null;
+
+       
+        function getAnnotationCount() {
+            let count = 0;
+            for (let key in localStorage) {
+                if (key.startsWith("annotation_")) {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+
+        function updateDisplayCount() {
+            const count = getAnnotationCount();
+            document.getElementById("storedCount").textContent = `${count} annotation(s) stored locally`;
+        }
+
+       
+        document.getElementById("startBtn").onclick = function () {
+            annotations = [];
+            interval = setInterval(() => {
+                const timestamp = new Date().toISOString();
+                annotations.push({ time: timestamp, value: Math.random().toFixed(2) });
+            }, 100);
+            document.getElementById("status").textContent = "Recording...";
+        };
+
+
+        document.getElementById("stopBtn").onclick = function () {
+            clearInterval(interval);
+            document.getElementById("status").textContent = "Stopped. Saving locally...";
+
+            const key = "annotation_" + new Date().getTime();
+            localStorage.setItem(key, JSON.stringify(annotations));
+
+            updateDisplayCount();
+            document.getElementById("status").textContent = "Annotation saved locally.";
+        };
+
+ 
+        document.getElementById("uploadBtn").onclick = async function () {
+    document.getElementById("uploadStatus").textContent = "Uploading annotations...";
+
+    let uploadedCount = 0;
+    let failedCount = 0;
+
+    for (let key in localStorage) {
+        if (key.startsWith("annotation_")) {
+            const data = localStorage.getItem(key);
+            try {
+                const response = await fetch("/upload", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: data
+                });
+                if (response.ok) {
+                    localStorage.removeItem(key);
+                    uploadedCount++;
+                } else {
+                    console.error(`Upload failed for ${key}`);
+                    failedCount++;
+                }
+            } catch (error) {
+                console.error(`Error uploading ${key}:`, error);
+                failedCount++;
+            }
+        }
+    }
+
+    updateDisplayCount();
+    document.getElementById("uploadStatus").textContent =
+        `Upload complete: ${uploadedCount} uploaded, ${failedCount} failed.`;
+};
+
+window.onload = updateDisplayCount;
+    </script>
+</body>
+</html>
