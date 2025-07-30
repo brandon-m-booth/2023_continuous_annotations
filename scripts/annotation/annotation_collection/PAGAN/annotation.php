@@ -9,7 +9,7 @@
     if (!isset($_COOKIE['seen_notice'])) {
         setcookie('seen_notice', 'seen', strtotime('+365 days'), '/', $_SERVER['HTTP_HOST']);
     }
-    include header.php;
+ 
 
     require_once "config.php";
     $project_name = $target = $type = $session_id = "";
@@ -103,6 +103,7 @@
                 array_push($progress, $progress_entry);
                 setcookie('progress', json_encode($progress), strtotime('+7 days'), '/', $_SERVER['HTTP_HOST']);
             }
+            include header.php;
 
             // Get available entires in the projects
             $available_entries = array();
