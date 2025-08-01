@@ -1,6 +1,5 @@
 ﻿<?php
-// Initialize the session
-session_start();
+session_start(); // Initialize the session
 
 $title = 'Platform for Affective Game ANnotation';
 include("base.php");
