@@ -154,11 +154,12 @@ function onPlayerStateChange(event) {
         case 2: //paused
             break;
         case 3: //buffering
-            player.pauseVideo();
-            paused = true;
-            $('#pause-helper').addClass('hidden')
-            $('#pause').removeClass('hidden');
-            $('#video-shade').removeClass('hidden');
+            //player.pauseVideo();
+            //paused = true;
+	    //console.log("buffering");
+            //$('#pause-helper').addClass('hidden')
+            //$('#pause').removeClass('hidden');
+            //$('#video-shade').removeClass('hidden');
             break;
         case 5: //video cued
             break;
