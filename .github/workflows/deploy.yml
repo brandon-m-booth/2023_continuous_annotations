@@ -15,6 +15,7 @@ jobs:
     - name: Set up SSH
       run: |
         mkdir -p ~/.ssh
+        ssh-keygen -R ${{ secrets.GCP_HOST }} || true
         echo "${{ secrets.GCP_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
         ssh-keyscan -H ${{ secrets.GCP_HOST }} >> ~/.ssh/known_hosts

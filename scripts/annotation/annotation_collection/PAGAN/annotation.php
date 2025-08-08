@@ -1,15 +1,11 @@
 <?php
     $title = 'Platform for Affective Game ANnotation';
     $css = ['annotation.css'];
-    $test_mode = False;
+    $test_mode = 0;
     if (!empty($_GET['test_mode'])){
         $test_mode = 1;
     }
     include("base.php");
-    if (!isset($_COOKIE['seen_notice'])) {
-        setcookie('seen_notice', 'seen', strtotime('+365 days'), '/', $_SERVER['HTTP_HOST']);
-    }
- 
 
     require_once "config.php";
     $project_name = $target = $type = $session_id = "";
@@ -25,10 +21,10 @@
     $started_project = 0;
 
     // Init globals
-    $project_name = $project_id = $target = $type = $source_type = $video_loading = $n_of_entries = $n_of_participant_runs = $source = $sequence_n = $endless = $sound = $message = "";
+    $project_name = $project_id = $entry_id = $target = $type = $source_type = $video_loading = $n_of_entries = $n_of_participant_runs = $source = $sequence_n = $endless = $sound = $message = "";
 
     if($_SERVER["REQUEST_METHOD"] == "GET"){
-        $project_id = isset($_GET['project_name']) ? htmlspecialchars($_GET['id'], ENT_QUOTES, "UTF-8"):'';
+        $project_id = htmlspecialchars($_GET['id'], ENT_QUOTES, "UTF-8");
         if ($test_mode > 0) {
             $project_name = isset($_GET['project_name']) ? htmlspecialchars($_GET['project_name'], ENT_QUOTES, "UTF-8"):'';
             $target = isset($_GET['target']) ? htmlspecialchars($_GET['target'], ENT_QUOTES, "UTF-8"):'';
@@ -44,7 +40,7 @@
             $n_of_entries = 1;
             $n_of_participant_runs = 1;
         } else {
-            $entry_id = isset($_GET['entry']) ? htmlspecialchars($_GET['entry'], ENT_QUOTES, "UTF-8"):'';
+            $entry_id = htmlspecialchars($_GET['entry'], ENT_QUOTES, "UTF-8");
             $sql = "SELECT * FROM projects WHERE project_id = :project_id LIMIT 1";
             $stmt = $pdo->prepare($sql);
             $stmt->bindParam(":project_id", $project_id, PDO::PARAM_STR);
@@ -102,6 +98,9 @@
                 $progress_entry->n_runs = 0;
                 array_push($progress, $progress_entry);
                 setcookie('progress', json_encode($progress), strtotime('+7 days'), '/', $_SERVER['HTTP_HOST']);
+		$current_run['project_id'] = $project_id;
+		$current_run['n_runs'] = 0;
+		$current_run['seen'] = array();
             }
             include header.php;
 
@@ -169,8 +168,8 @@
             <button>Alright, I understand</button>
         </div>
         <div id='cookie_wall'></div>";
-       
-    }
+        setcookie('seen_notice', 'seen', strtotime('+365 days'), '/', $_SERVER['HTTP_HOST']);
+        } 
     if ($test_mode > 0) {
         echo "<div class='subheader-buttons'><a class='button' href='./test.php'>go back</a></div>";
     }
