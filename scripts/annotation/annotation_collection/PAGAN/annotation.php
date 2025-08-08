@@ -321,9 +321,9 @@
                 videoname = "'.$project_name.'",
                 target = "'.$target.'",
                 project_id = "'.$project_id.'",
-                entry_id = "'.$source['entry_id'].'",
+                entry_id = "'.(isset($source['entry_id']) ? $source['entry_id'] : '').'",
                 session_id = "'.$session_id.'",
-                name = "'.$source['original_name'].'",
+                name = "'. (isset($source['original_name']) ? $source['original_name'] : '').'",
                 sound = "'.$sound.'",
                 test_mode ="'.$test_mode.'"
             );
